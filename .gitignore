@@ -1,0 +1,10 @@
+/test/case/*
+!/test/case/*.c
+!/test/case/*.ld
+!/test/case/*.mk
+!/test/case/Makefile
+
+obj_dir
+wave
+build
+log.txt
