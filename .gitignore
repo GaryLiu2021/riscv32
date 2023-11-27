@@ -5,6 +5,7 @@
 !/test/case/Makefile
 
 obj_dir
+wave.vcd
 wave
 build
 log.txt
