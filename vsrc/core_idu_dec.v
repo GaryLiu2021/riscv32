@@ -1,6 +1,6 @@
 `include "inst_define.v"
 
-module stage_decode (
+module core_idu_dec (
     input       [31:0]  inst,
     output      [6:0]   opcode,
     output      [2:0]   func3,
@@ -103,4 +103,4 @@ module stage_decode (
         endcase
     end
 
-endmodule //stage_decode
+endmodule //core_idu_dec

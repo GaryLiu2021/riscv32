@@ -1,71 +1,81 @@
 `include "inst_define.v"
 
 module gpr (
-    input               clk,
-    input               rstn,
+	input				clk,
+	input				rstn,
 
-    // read
-    input           [4:0]   reg_addr_rs1,
-    input           [4:0]   reg_addr_rs2,
-    output          [31:0]  reg_data_rs1,
-    output          [31:0]  reg_data_rs2,
+	// Read GPR
+	input		[4:0]   gpr_rx_rs1_idx,
+	input		[4:0]   gpr_rx_rs2_idx,
 
-    // write
-    input           [4:0]   reg_addr_rd,
+	output		[31:0]  gpr_tx_rs1,
+	output		[31:0]  gpr_tx_rs2,
 
-    input           [31:0]  alu_data_out,
-    input           [31:0]  alu_pc_out,
-    input           [31:0]  imme,
-    input           [31:0]  alu_pc_seq,
-    input           [31:0]  mem_data_out,
-    input           [31:0]  csr_data_out,
+	// Write GPR
+	// input				gpr_rx_valid,
+	output				gpr_rx_ready,
 
-    input           [5:0]   op_type,
-    input           [6:0]   opcode
+	input		[4:0]   gpr_rx_rd_idx,
+	input		[31:0]  gpr_rx_exu_res,
+	input		[31:0]  gpr_rx_pc,
+	input		[31:0]  gpr_rx_imme,
+	input		[31:0]  gpr_rx_pc_seq,
+	input		[31:0]  gpr_rx_mem,
+	input		[31:0]  gpr_rx_csr,
+
+	input				gpr_rx_imme_valid,
+	input				gpr_rx_pc_valid,
+	input				gpr_rx_pc_seq_valid,
+	input				gpr_rx_csr_valid,
+	input				gpr_rx_mem_valid,
+	input				gpr_rx_alu_valid
 );
 
-    reg [31:0] gpr [31:0];
-    import "DPI-C" function void set_ptr_gpr(input logic [31:0] gpr []);
+	reg [31:0] gpr [31:0];
+	// import "DPI-C" function void set_ptr_gpr(input logic [31:0] gpr []);
 
-    wire reg_wr_en;
-    wire [31:0] reg_data_rd;
+	wire reg_wr_en;
+	wire [31:0] reg_data_rd;
 
-    assign reg_wr_en = (opcode != `branch) && (opcode != `store) && (opcode != `fence) && (op_type != `op_type_ecall) && (op_type != `op_type_ebreak);
-    assign reg_data_rd = (op_type == `op_type_lui) ? imme :
-                         (op_type == `op_type_auipc) ? alu_pc_out :
-                         (op_type == `op_type_jal || op_type == `op_type_jalr) ? alu_pc_seq :
-                         (opcode == `system && (op_type != `op_type_ecall) && (op_type != `op_type_ebreak)) ? csr_data_out :
-                         (opcode == `load) ? mem_data_out : alu_data_out;
+	assign	reg_data_rd	=	gpr_rx_imme_valid	?	gpr_rx_imme		:
+							gpr_rx_pc_valid		?	gpr_rx_pc		:
+							gpr_rx_pc_seq_valid	?	gpr_rx_pc_seq	:
+							gpr_rx_csr_valid	?	gpr_rx_csr		:
+							gpr_rx_mem_valid	?	gpr_rx_mem		:
+							gpr_rx_alu_valid	?	gpr_rx_exu_res	:	'd0;
 
-    integer i;
-    always @(posedge clk or negedge rstn) begin
-        if(!rstn)
-            for(i = 0 ; i < 32 ; i = i + 1)
-                gpr[i] <= i == 5'd2 ? `RESET_VECTOR : 32'd0;
-        else if(reg_wr_en)
-            gpr[reg_addr_rd] <= (reg_addr_rd == 5'd0) ? 32'd0 : reg_data_rd;
-    end
+	assign	reg_wr_en	=	gpr_rx_imme_valid || gpr_rx_pc_valid || gpr_rx_pc_seq_valid ||
+							gpr_rx_csr_valid || gpr_rx_mem_valid || gpr_rx_alu_valid;
 
-    assign reg_data_rs1 = gpr[reg_addr_rs1];
-    assign reg_data_rs2 = gpr[reg_addr_rs2];
+	integer i;
+	always @(posedge clk or negedge rstn) begin
+		if(!rstn)
+			for(i = 0 ; i < 32 ; i = i + 1)
+				gpr[i] <= i == 5'd2 ? `RESET_VECTOR : 32'd0;
+		else if(reg_wr_en)
+			gpr[gpr_rx_rd_idx] <= (gpr_rx_rd_idx == 5'd0) ? 32'd0 : reg_data_rd;
+	end
 
-    // always @(posedge clk) begin
-    //     if(reg_wr_en)
-    //         $display("writing data %0d into %0d", $signed(reg_data_rd), reg_addr_rd);
-    // end
+	assign gpr_tx_rs1 = gpr[gpr_rx_rs1_idx];
+	assign gpr_tx_rs2 = gpr[gpr_rx_rs2_idx];
 
-    always @(posedge clk) begin
-        if(op_type == `op_type_ecall && gpr[17] == 32'd93) begin
-            if(gpr[10] == 'd0)
-                $display("Pass!!!");
-            else
-                $display("Fail!!!");
-            #(1) $finish;
-        end
-    end
+	// always @(posedge clk) begin
+	// if(reg_wr_en)
+	// $display("writing data %0d into %0d", $signed(reg_data_rd), gpr_rx_rd_idx);
+	// end
 
-    initial  begin
-        set_ptr_gpr(gpr);
-    end
+	// always @(posedge clk) begin
+	// 	if(op_type == `op_type_ecall && gpr[17] == 32'd93) begin
+	// 		if(gpr[10] == 'd0)
+	// 			$display("Pass!!!");
+	// 		else
+	// 			$display("Fail!!!");
+	// 		#(1) $finish;
+	// 	end
+	// end
+
+	// initial  begin
+	// 	set_ptr_gpr(gpr);
+	// end
 
 endmodule //gpr

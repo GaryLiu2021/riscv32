@@ -9,3 +9,5 @@ wave.vcd
 wave
 build
 log.txt
+*.out
+*.vcd
