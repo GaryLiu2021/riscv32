@@ -32,11 +32,12 @@ module gpr (
 );
 
 	reg [31:0] gpr [31:0];
-	// import "DPI-C" function void set_ptr_gpr(input logic [31:0] gpr []);
 
 	wire reg_wr_en;
 	wire [31:0] reg_data_rd;
 
+	assign	reg_wr_en	=	gpr_rx_imme_valid || gpr_rx_pc_valid || gpr_rx_pc_seq_valid ||
+							gpr_rx_csr_valid || gpr_rx_mem_valid || gpr_rx_alu_valid;
 	assign	reg_data_rd	=	gpr_rx_imme_valid	?	gpr_rx_imme		:
 							gpr_rx_pc_valid		?	gpr_rx_pc		:
 							gpr_rx_pc_seq_valid	?	gpr_rx_pc_seq	:
@@ -44,25 +45,36 @@ module gpr (
 							gpr_rx_mem_valid	?	gpr_rx_mem		:
 							gpr_rx_alu_valid	?	gpr_rx_exu_res	:	'd0;
 
-	assign	reg_wr_en	=	gpr_rx_imme_valid || gpr_rx_pc_valid || gpr_rx_pc_seq_valid ||
-							gpr_rx_csr_valid || gpr_rx_mem_valid || gpr_rx_alu_valid;
-
 	integer i;
 	always @(posedge clk or negedge rstn) begin
 		if(!rstn)
 			for(i = 0 ; i < 32 ; i = i + 1)
-				gpr[i] <= i == 5'd2 ? `RESET_VECTOR : 32'd0;
+				gpr[i] <= i == 5'd2 ? `RESET_VECTOR : 32'd0;	// Set the stack pointer as RESET_VECTOR
 		else if(reg_wr_en)
 			gpr[gpr_rx_rd_idx] <= (gpr_rx_rd_idx == 5'd0) ? 32'd0 : reg_data_rd;
 	end
 
-	assign gpr_tx_rs1 = gpr[gpr_rx_rs1_idx];
-	assign gpr_tx_rs2 = gpr[gpr_rx_rs2_idx];
+	assign	gpr_tx_rs1		=	gpr[gpr_rx_rs1_idx];
+	assign	gpr_tx_rs2		=	gpr[gpr_rx_rs2_idx];
+	assign	gpr_rx_ready	=	rstn;
 
-	// always @(posedge clk) begin
-	// if(reg_wr_en)
-	// $display("writing data %0d into %0d", $signed(reg_data_rd), gpr_rx_rd_idx);
-	// end
+	/*
+	 * DPI-C with verilator
+	 */
+`ifdef	__VERILATOR__
+	import "DPI-C" function void set_ptr_gpr(input logic [31:0] gpr []);
+
+	initial  begin
+		set_ptr_gpr(gpr);
+	end
+`endif
+
+`ifdef	__LOG_ENABLE__
+	always @(posedge clk) begin
+		if(reg_wr_en)
+			$display("writing data %h into gpr[%0d]", reg_data_rd, gpr_rx_rd_idx);
+	end
+`endif
 
 	// always @(posedge clk) begin
 	// 	if(op_type == `op_type_ecall && gpr[17] == 32'd93) begin
@@ -74,8 +86,9 @@ module gpr (
 	// 	end
 	// end
 
-	// initial  begin
-	// 	set_ptr_gpr(gpr);
-	// end
+	
+
+	
+
 
 endmodule //gpr

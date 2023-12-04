@@ -1,5 +1,3 @@
-// import "DPI-C" function void set_ptr_mem(input logic [31:0] mem []);
-
 module mem_ctrl (
     input               clk,
     input               rstn,
@@ -74,5 +72,11 @@ module mem_ctrl (
                           rd_data;
 
     assign mem_bus_rinst = mem[mem_bus_iaddr[31:2]];
+
+    always @(posedge clk) begin
+        if(rstn)
+            if(mem_bus_wen)
+                $display("MEM: Writing %h to %h", wr_data, mem_bus_addr);
+    end
 
 endmodule //mem_ctrl

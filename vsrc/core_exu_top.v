@@ -34,9 +34,9 @@ module core_exu_top (
 	output	reg			exu_tx_csr_valid,		//	Tell GPR to write CSR
 	output	reg			exu_tx_alu_valid,		//	Tell GPR to write ALU result
 
-	output	reg			exu_tx_rd_idx,			//	Tell GPR the rd idx
+	output	reg	[4:0]	exu_tx_rd_idx,			//	Tell GPR the rd idx
 
-	output				exu_tx_bc_en,			//	Tell IFU jump or not
+	output	reg			exu_tx_bc_en,			//	Tell IFU jump or not
 	output	reg			exu_tx_bc_done,			//	Tell IFU branch instruction is done
 	output  reg [31:0]  exu_tx_bc_pc			//	Tell IFU the addr to jump to
 );
@@ -73,9 +73,9 @@ module core_exu_top (
 				else
 					s_next = S_RX_PEND;
 			S_TX_PEND:
-				if(rx_ena && tx_ena)
+				if(tx_ena && rx_ena)
 					s_next = S_TX_PEND;
-				else if(!rx_ena && tx_ena)
+				else if(tx_ena && !rx_ena)
 					s_next = S_RX_PEND;
 				else
 					s_next = S_TX_PEND;
@@ -99,9 +99,9 @@ module core_exu_top (
 				if(rx_ena)
 					exu_tx_valid <= 1'b1;
 			S_TX_PEND:
-				if(rx_ena && tx_ena)
+				if(tx_ena && rx_ena)
 					exu_tx_valid <= 1'b1;
-				else if(!rx_ena && tx_ena)
+				else if(tx_ena && !rx_ena)
 					exu_tx_valid <= 1'b0;
 		endcase
 	end
@@ -129,22 +129,22 @@ module core_exu_top (
 		.adder_res_neq           ( adder_res_neq     )
 	);
 
-	assign exu_tx_bc_en = exu_tx_bc_done && exu_tx_exu_res[0];
-
 	/*
 	 * PC Adder
-	 ! Operating PC REG
+	 ! Modifying PC REG
 	 */
+	
+	wire	rx_bc_pc_ena	=	rx_ena && (exu_rx_opcode == `jal || exu_rx_opcode == `jalr || exu_rx_opcode == `branch);
 	always @(posedge clk or negedge rstn) begin
 		if(!rstn)
 			exu_tx_bc_pc <= `zero_word;
 		else case(s_pres)
 			S_RX_PEND:
-				if(rx_ena)
-					exu_tx_bc_pc <= (exu_rx_op_type == `op_type_jalr) ? (exu_rx_rs1 + exu_rx_imme) & (~32'b1) : exu_rx_pc + exu_rx_imme;
+				if(rx_bc_pc_ena)
+					exu_tx_bc_pc <= exu_rx_opcode == `jalr ? (exu_rx_rs1 + exu_rx_imme) & (~32'b1) : exu_rx_pc + exu_rx_imme;
 			S_TX_PEND:
-				if(rx_ena && tx_ena)
-					exu_tx_bc_pc <= (exu_rx_op_type == `op_type_jalr) ? (exu_rx_rs1 + exu_rx_imme) & (~32'b1) : exu_rx_pc + exu_rx_imme;
+				if(tx_ena && rx_bc_pc_ena)
+					exu_tx_bc_pc <= exu_rx_opcode == `jalr ? (exu_rx_rs1 + exu_rx_imme) & (~32'b1) : exu_rx_pc + exu_rx_imme;
 		endcase
 	end
 
@@ -153,13 +153,19 @@ module core_exu_top (
 			exu_tx_bc_done <= 1'b0;
 		else case(s_pres)
 			S_RX_PEND:
-				if(rx_ena)
-					exu_tx_bc_done <= (exu_rx_opcode == `jal || exu_rx_opcode == `jalr || exu_rx_opcode == `branch);
+				if(rx_bc_pc_ena) begin
+					exu_tx_bc_done	<=	1'b1;
+					exu_tx_bc_en	<=	exu_rx_opcode == `branch	?	exu_tx_exu_res_w[0]	:	1'b1;
+				end
 			S_TX_PEND:
-				if(rx_ena && tx_ena)
-					exu_tx_bc_done <= (exu_rx_opcode == `jal || exu_rx_opcode == `jalr || exu_rx_opcode == `branch);
-				else if(!rx_ena && tx_ena)
-					exu_tx_bc_done <= 1'b0;
+				if(tx_ena && rx_bc_pc_ena) begin
+					exu_tx_bc_done	<=	1'b1;
+					exu_tx_bc_en	<=	exu_rx_opcode == `branch	?	exu_tx_exu_res_w[0]	:	1'b1;
+				end
+				else if(tx_ena && !rx_bc_pc_ena) begin
+					exu_tx_bc_done	<=	1'b0;
+					exu_tx_bc_en	<=	1'b0;
+				end
 		endcase
 	end
 
@@ -208,7 +214,7 @@ module core_exu_top (
 				if(rx_ena)
 					exu_tx_exu_res <= exu_tx_exu_res_w;
 			S_TX_PEND:
-				if(rx_ena && tx_ena)
+				if(tx_ena && rx_ena)
 					exu_tx_exu_res <= exu_tx_exu_res_w;
 		endcase
 	end
@@ -246,14 +252,14 @@ module core_exu_top (
 					exu_tx_alu_valid	<=	exu_tx_alu_sel		?	1'b1	:	1'b0;
 				end
 			S_TX_PEND:
-				if(rx_ena) begin
+				if(tx_ena && rx_ena) begin
 					exu_tx_imme_valid	<=	exu_tx_imme_sel		?	1'b1	:	1'b0;
 					exu_tx_pc_valid		<=	exu_tx_pc_sel		?	1'b1	:	1'b0;
 					exu_tx_pc_seq_valid	<=	exu_tx_pc_seq_sel	?	1'b1	:	1'b0;
 					exu_tx_csr_valid	<=	exu_tx_csr_sel		?	1'b1	:	1'b0;
 					exu_tx_alu_valid	<=	exu_tx_alu_sel		?	1'b1	:	1'b0;
 				end
-				else if(tx_ena) begin
+				else if(tx_ena && !rx_ena) begin
 					exu_tx_imme_valid	<= 1'b0;
 					exu_tx_pc_valid		<= 1'b0;
 					exu_tx_pc_seq_valid	<= 1'b0;
@@ -287,7 +293,7 @@ module core_exu_top (
 				if(rx_ena)
 					exu_tx_rd_idx <= exu_rx_rd_idx;
 			S_TX_PEND:
-				if(rx_ena)
+				if(tx_ena && rx_ena)
 					exu_tx_rd_idx <= exu_rx_rd_idx;
 		endcase
 	end

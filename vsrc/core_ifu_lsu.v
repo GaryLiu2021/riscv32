@@ -1,3 +1,4 @@
+
 module core_ifu_lsu(
 	input                   clk,
 	input                   rstn,
@@ -20,15 +21,15 @@ module core_ifu_lsu(
 	output		[31:0]		lsu_tx_inst
 );
 
-	reg [31:0] icache [31:0];
+	reg [31:0] icache [(1<<17)-1:0];
 
-	always @(posedge clk) begin
-		if(!rstn)
-			for(i = 0;i < 32;i = i + 1)
-				icache[i] <= i;
-		else
-			icache[5] <= 32'b0000_0000_0000_0000_0000_0000_01100011; // A branch inst
-	end
+	// always @(posedge clk) begin
+	// 	if(!rstn)
+	// 		for(i = 0;i < 32;i = i + 1)
+	// 			icache[i] <= i;
+	// 	else
+	// 		icache[5] <= 32'b0000_0000_0000_0000_0000_0000_01100011; // A branch inst
+	// end
 
 	reg [31:0] icache_del [2:0];
 
@@ -43,16 +44,14 @@ module core_ifu_lsu(
 		end
 		else begin
 			if(bus_req_valid) begin
-				icache_del[0] <= icache[lsu_rx_addr];
-				$display("lsu reading %h", lsu_rx_addr);
+				icache_del[0] <= icache[lsu_rx_addr[31:2]];
+				$display("IFU fetching inst on %h", lsu_rx_addr);
 			end
 			icache_del[1] <= icache_del[0];
 			icache_del[2] <= icache_del[1];
 		end
 	end
-
-	wire [31:0] icache_watch = icache_del[2];
-
+	
 	reg [2:0] valid;
 	always @(posedge clk or negedge rstn) begin
 		if(!rstn)
@@ -97,5 +96,15 @@ module core_ifu_lsu(
 	assign fifo_tx_ready = lsu_tx_ready;
 	assign lsu_tx_valid = fifo_tx_valid;
 	assign lsu_tx_inst = fifo_tx_data;
+
+`ifdef __VERILATOR__
+
+	import "DPI-C" function void set_ptr_mem(input logic [31:0] icache []);
+	initial begin
+		set_ptr_mem(icache);
+        // $readmemb("/home/sgap/ysyx-workbench/npc/vsrc/mem.init", mem);
+    end
+
+`endif
 
 endmodule

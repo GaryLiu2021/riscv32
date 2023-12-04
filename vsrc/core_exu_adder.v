@@ -46,9 +46,12 @@ module core_exu_adder(
 	assign adder_res_ltu = ~adder_carry_out;
 	assign adder_res_neq = (|adder_out);
 
-	assign adder_res = 	(op_type == `op_type_slt || op_type == `op_type_slti || op_type == `op_type_blt || op_type == `op_type_bge)		? {{31{1'b0}}, adder_res_lt}  :
-						(op_type == `op_type_sltu || op_type == `op_type_sltiu || op_type == `op_type_bltu || op_type == `op_type_bgeu) ? {{31{1'b0}}, adder_res_ltu} :
-						(op_type == `op_type_beq || op_type == `op_type_bne)                                                        	? {{31{1'b0}}, adder_res_neq} : adder_out;
+	assign adder_res = 	(op_type == `op_type_slt || op_type == `op_type_slti || op_type == `op_type_blt)	?	{{31{1'b0}}, adder_res_ltu}	:
+						(op_type == `op_type_bge)															?	{{31{1'b0}}, ~adder_res_lt}	:
+						(op_type == `op_type_sltu || op_type == `op_type_sltiu || op_type == `op_type_bltu)	?	{{31{1'b0}}, adder_res_ltu}	:
+						(op_type == `op_type_bgeu)															?	{{31{1'b0}}, ~adder_res_ltu}:
+						(op_type == `op_type_bne)															?	{{31{1'b0}}, adder_res_neq}	: 
+						(op_type == `op_type_beq)															?	{{31{1'b0}}, ~adder_res_neq}:	adder_out;
 
 	// End of Adder
 

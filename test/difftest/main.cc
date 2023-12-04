@@ -62,30 +62,6 @@ char* uint32_to_binary_string(uint32_t n) {
     return binary_string;
 }
 
-//! DPI-C
-extern "C" {
-    void set_ptr_gpr(const svOpenArrayHandle r) {
-        dut_gpr = (word_t*)(((VerilatedDpiOpenVar*)r)->datap());
-    }
-
-    void set_ptr_pc(const svOpenArrayHandle r) {
-        dut_pc = (word_t*)(((VerilatedDpiOpenVar*)r)->datap());
-    }
-
-    void set_ptr_inst(const svOpenArrayHandle r) {
-        dut_inst = (word_t*)(((VerilatedDpiOpenVar*)r)->datap());
-    }
-
-    void set_ptr_mem(const svOpenArrayHandle r) {
-        dut_mem = (word_t*)(((VerilatedDpiOpenVar*)r)->datap());
-    }
-
-    void call_return() {
-        printf("\n\nProgram Returned Normally...\n\n");
-        finish = true;
-    }
-}
-
 void print_dut_gpr() {
     int i;
     for (i = 0; i < 32; i++) {
@@ -110,6 +86,34 @@ void print_ref_gpr() {
 
 void print_ref_pc() {
     printf("ref_pc_next = %08x\n", ref_state.pc);
+}
+
+//! DPI-C
+extern "C" {
+    void set_ptr_gpr(const svOpenArrayHandle r) {
+        dut_gpr = (word_t*)(((VerilatedDpiOpenVar*)r)->datap());
+    }
+
+    void set_ptr_pc(const svOpenArrayHandle r) {
+        dut_pc = (word_t*)(((VerilatedDpiOpenVar*)r)->datap());
+    }
+
+    void set_ptr_inst(const svOpenArrayHandle r) {
+        dut_inst = (word_t*)(((VerilatedDpiOpenVar*)r)->datap());
+    }
+
+    void set_ptr_mem(const svOpenArrayHandle r) {
+        dut_mem = (word_t*)(((VerilatedDpiOpenVar*)r)->datap());
+    }
+
+    void call_return() {
+        if (*(dut_gpr + 10) == 1)
+            printf("\n\nProgram returned normally...\n\n");
+        else
+            printf("\n\nProgram returned with error.\n\n");
+        print_dut_gpr();
+        finish = true;
+    }
 }
 
 //! DIFF FUNCTIONS
@@ -300,10 +304,10 @@ int main(int argc, char** argv, char** env) {
     init_difftest(lib_file, img_size, 1234);
 
     while (!finish && cycles < 10000) {
-        printf("CYCLE %ld\n", cycles);
-        // print_dut_pc();
+        printf("\nCYCLE %ld\n", cycles);
+        print_dut_pc();
         // print_dut_inst();
-        // print_dut_gpr();
+        print_dut_gpr();
 
         m_dut->clk = 1; // 0 -> 1
         m_dut->eval();
@@ -313,7 +317,7 @@ int main(int argc, char** argv, char** env) {
         m_tracep->dump(times++);
 
         dut_state_dump();
-        difftest_step(dut_state.pc + RESET_VECTOR, 0);
+        // difftest_step(dut_state.pc + RESET_VECTOR, 0);
 
         cycles++;
     }

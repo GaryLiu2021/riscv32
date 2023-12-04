@@ -9,13 +9,14 @@ module core_lsu_top(
 
 	input		[6:0]	lsu_rx_opcode,
 	input		[2:0]	lsu_rx_func3,
-	input		[4:0]	lsu_rx_rs1_data,
-	input		[4:0]	lsu_rx_rs2_data,
+	input		[31:0]	lsu_rx_rs1_data,
+	input		[31:0]	lsu_rx_rs2_data,
 	input		[4:0]	lsu_rx_rd_idx,
 	input		[31:0]	lsu_rx_imme,
 
 	// Memory Interface
 	output				lsu_bus_wen,
+	output				lsu_bus_ren,
 	output		[2:0]	lsu_bus_rwtyp,
 
 	output		[31:0]	lsu_bus_addr,
@@ -36,6 +37,7 @@ module core_lsu_top(
 	wire tx_ena = lsu_tx_valid && lsu_tx_ready;
 
 	assign	lsu_bus_wen		=	rx_ena && lsu_rx_opcode == `store;
+	assign	lsu_bus_ren		=	rx_ena && lsu_rx_opcode == `load;
 	assign	lsu_bus_rwtyp	=	lsu_rx_func3;
 	assign	lsu_bus_addr	=	lsu_rx_rs1_data + lsu_rx_imme;
 	assign	lsu_bus_wdata	=	lsu_rx_rs2_data;
@@ -59,6 +61,21 @@ module core_lsu_top(
 		else if(rx_ena && lsu_rx_opcode == `load) begin
 			lsu_tx_data		<=	lsu_bus_rdata;
 			lsu_tx_rd_idx	<=	lsu_rx_rd_idx;
+		end
+	end
+
+	always @(posedge clk) begin
+		if(rstn) begin
+			if(lsu_bus_wen) begin
+				$display("LSU: Sending memory write request to bus...");
+				$display("\tTarget address: 0x%h", lsu_bus_addr);
+				$display("\tData sent: %h", lsu_bus_wdata);
+			end
+			if(lsu_bus_ren) begin
+				$display("LSU: Sending memory read request to bus...");
+				$display("\tTarget address: 0x%h", lsu_bus_addr);
+				$display("\tData fetched: %h", lsu_bus_rdata);
+			end
 		end
 	end
 

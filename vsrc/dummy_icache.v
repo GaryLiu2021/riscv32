@@ -25,7 +25,7 @@ module dummy_icache (
 	 * Load Logic
 	 */
 	
-	reg [31:0] memory [31:0];
+	reg [31:0] memory [1<<14 - 1:0];
 
 	wire rx_ena = rx_valid && rx_ready;
 	wire tx_ena = tx_valid && tx_ready;

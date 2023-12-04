@@ -1,48 +1,64 @@
 # Init directory
-wave_dir=./wave/
-src_dir=../../vsrc
-
-# Verilog srcs
-VERILOG_VSRCS = $(src_dir)/*.v
-VERILOG_TOP = sim
+WAVE_DIR=./wave
+VSRC_DIR=../../vsrc
+CASE_DIR = ../case
 
 # Verilator flags
-VERILATOR_FLAGS = --timing -Wno-fatal -Wall -cc -exe -build --trace
+VERILATOR_FLAGS = --timing -Wno-fatal -Wall -cc -exe -build --trace 
 
+# Verilog srcs
+VERILOG_VSRCS := $(VSRC_DIR)/*.v
+# Verilog top module
+VERILOG_TOP := sim
+VERILATOR_FLAGS += --top-module $(VERILOG_TOP) 
 # Verilator include
-VERILATOR_INC = -I$(src_dir)
-
+VERILATOR_INC := -I$(VSRC_DIR)
+VERILATOR_FLAGS += $(VERILATOR_INC)
+# Verilator macros
+VERILATOR_MACROS := -D__VERILATOR__ -D__LOG_ENABLE__
+VERILATOR_FLAGS += $(VERILATOR_MACROS)
 # Verilator wrapper file
 VERILATOR_CSRCS = main.cc
+VERILATOR_CFLAGS = -CFLAGS "$(INC_PATH) -L$(lib_dir) -l$(lib_name) -g"
 
-# C compiler flags
+# Reference repo
 REPO_PATH = ./spike-diff/repo
-inc_dependencies = fesvr riscv disasm customext fdt softfloat spike_main spike_dasm build
-INC_PATH = -I$(REPO_PATH) $(addprefix -I$(REPO_PATH)/, $(inc_dependencies))
+DEPS = fesvr riscv disasm customext fdt softfloat spike_main spike_dasm build
+INC_PATH += -I$(REPO_PATH) $(addprefix -I$(REPO_PATH)/, $(DEPS))
 # INC_PATH += -I$(NEMU_HOME)/include
 
 lib_dir = ./spike-diff/build
 lib_name = riscv32-spike-so
 
-CFLAGS = -CFLAGS "$(INC_PATH) -L$(lib_dir) -l$(lib_name) -g"
+ifeq ($(CASE),)
+CASES := $(notdir $(wildcard $(CASE_DIR)/*))
+else
+CASES := $(notdir $(CASE_DIR)/$(CASE))
+endif
 
-TESTCASE_DIR = ../case
+# ------------------------------
+.PHONY: all lib gdb
+all: $(CASES)
 
-.PHONY: sim lib gdb
+$(CASES): lib
+	@echo "Compiling test case $@..."
+	@$(MAKE) -C $(CASE_DIR)/$@ -f $@.mk
 
-sim: lib
+	@echo "Simulating test case $@..."
+	verilator $(VERILATOR_FLAGS) $(VERILOG_VSRCS) $(VERILATOR_CSRCS) $(VERILATOR_CFLAGS)
 
-	@$(MAKE) -C $(TESTCASE_DIR) -f test.mk
-
-	verilator $(VERILATOR_FLAGS) $(VERILATOR_INC) $(VERILOG_VSRCS) --top-module $(VERILOG_TOP) $(VERILATOR_CSRCS) $(CFLAGS)
 	@echo "\n\n\tSimulation Begin!\n\n"
-	./obj_dir/V$(VERILOG_TOP) > log.txt
+
+	./obj_dir/V$(VERILOG_TOP) | tee log.txt
+	mkdir -p $(WAVE_DIR)
+	mv -i -v *.vcd $(WAVE_DIR)
+
+	@echo "\nSimulation log has been stored in log.txt."
+	@echo "Simulation waveform has been stored in $(WAVE_DIR)."
 	@echo "\n\n\tSimulation Finished!\n\n"
-	mkdir -p $(wave_dir)
-	mv -i -v *.vcd $(wave_dir)
 
 lib:
 	make -s -C ./spike-diff GUEST_ISA=riscv32 SHARE=1 ENGINE=interpreter
 
-gdb: sim
+gdb: all
 	gdb ./obj_dir/V$(VERILOG_TOP)

@@ -9,28 +9,30 @@ module core_idu_top(
 	input				idu_rx_valid,
 	output				idu_rx_ready,
 
-	// Interface with global purpose registers(GPR)
-	output		[4:0]	idu_tx_rs1_idx,
-	output		[4:0]	idu_tx_rs2_idx,
+	// These signals are used to access GPR and SCB
+	output				idu_dec_rs1_vld,	//	Inst use rs1 or not
+	output		[4:0]	idu_dec_rs1_idx,
+	output				idu_dec_rs2_vld,
+	output		[4:0]	idu_dec_rs2_idx,
+	output				idu_dec_rd_vld,
+	output		[4:0]	idu_dec_rd_idx,
+	input				reg_rs_ready,
 	input		[31:0]	idu_rx_rs1,
 	input		[31:0]	idu_rx_rs2,
-
-	// Interface to Score Board
-	input				reg_rs_ready,
 
 	// Interface with next pipe
 	output	reg			idu_tx_valid,
 	input				idu_tx_ready,
 
 	output	reg	[31:0]	idu_tx_pc,
-	output  reg [6:0]   idu_tx_opcode,
-	output  reg [2:0]   idu_tx_func3,
-	output  reg         idu_tx_func7,
-	output  reg [4:0]   idu_tx_rs1,
-	output  reg [4:0]   idu_tx_rs2,
-	output  reg [4:0]   idu_tx_rd_idx,
-	output  reg [5:0]   idu_tx_op_type,
-	output  reg [31:0]  idu_tx_imme,
+	output	reg	[6:0]	idu_tx_opcode,
+	output	reg	[2:0]	idu_tx_func3,
+	output	reg			idu_tx_func7,
+	output	reg	[31:0]	idu_tx_rs1,
+	output	reg	[31:0]	idu_tx_rs2,
+	output	reg	[4:0]	idu_tx_rd_idx,
+	output	reg	[5:0]	idu_tx_op_type,
+	output	reg	[31:0]	idu_tx_imme,
 
 	output				idu_tx_to_exu,
 	output				idu_tx_to_lsu
@@ -40,7 +42,6 @@ module core_idu_top(
 	wire  [6:0]  opcode;
 	wire  [2:0]  func3;
 	wire  func7;
-	wire  [4:0]  reg_addr_rd;
 	wire  [5:0]  op_type;
 	wire  [31:0]  imme;
 
@@ -50,9 +51,9 @@ module core_idu_top(
 		.opcode                  ( opcode         ),
 		.func3                   ( func3          ),
 		.func7                   ( func7          ),
-		.reg_addr_rs1            ( idu_tx_rs1_idx ),
-		.reg_addr_rs2            ( idu_tx_rs2_idx ),
-		.reg_addr_rd             ( reg_addr_rd    ),
+		.reg_addr_rs1            ( idu_dec_rs1_idx ),
+		.reg_addr_rs2            ( idu_dec_rs2_idx ),
+		.reg_addr_rd             ( idu_dec_rd_idx),
 		.op_type                 ( op_type        ),
 		.imme                    ( imme           )
 	);
@@ -65,7 +66,7 @@ module core_idu_top(
 			reg_rs_ready_del <= reg_rs_ready;
 	end
 
-	assign idu_rx_ready = reg_rs_ready_del && idu_tx_ready;
+	assign idu_rx_ready = idu_tx_ready && reg_rs_ready;
 
 	reg [1:0]	s_pres;
 	reg	[1:0]	s_next;
@@ -94,7 +95,7 @@ module core_idu_top(
 				else
 					s_next = S_RX_PEND;
 			S_RS_PEND:
-				if(reg_rs_ready)
+				if(rx_ena && reg_rs_ready)
 					s_next = S_TX_PEND;
 				else
 					s_next = S_RS_PEND;
@@ -120,7 +121,7 @@ module core_idu_top(
 				else if(rx_ena && !reg_rs_ready)
 					idu_tx_valid <= 1'b0;
 			S_RS_PEND:
-				if(reg_rs_ready)
+				if(rx_ena && reg_rs_ready)
 					idu_tx_valid <= 1'b1;
 			S_TX_PEND:
 				if(tx_ena && rx_ena)
@@ -151,7 +152,7 @@ module core_idu_top(
 					idu_tx_func7	<=	func7;
 					idu_tx_rs1		<=	idu_rx_rs1;
 					idu_tx_rs2		<=	idu_rx_rs2;
-					idu_tx_rd_idx	<=	reg_addr_rd;
+					idu_tx_rd_idx	<=	idu_dec_rd_idx;
 					idu_tx_op_type	<=	op_type;
 					idu_tx_imme		<=	imme;
 				end
@@ -163,7 +164,7 @@ module core_idu_top(
 					idu_tx_func7	<=	func7;
 					idu_tx_rs1		<=	idu_rx_rs1;
 					idu_tx_rs2		<=	idu_rx_rs2;
-					idu_tx_rd_idx	<=	reg_addr_rd;
+					idu_tx_rd_idx	<=	idu_dec_rd_idx;
 					idu_tx_op_type	<=	op_type;
 					idu_tx_imme		<=	imme;
 				end
@@ -175,7 +176,7 @@ module core_idu_top(
 					idu_tx_func7	<=	func7;
 					idu_tx_rs1		<=	idu_rx_rs1;
 					idu_tx_rs2		<=	idu_rx_rs2;
-					idu_tx_rd_idx	<=	reg_addr_rd;
+					idu_tx_rd_idx	<=	idu_dec_rd_idx;
 					idu_tx_op_type	<=	op_type;
 					idu_tx_imme		<=	imme;
 				end
@@ -184,5 +185,18 @@ module core_idu_top(
 
 	assign	idu_tx_to_exu	=	idu_tx_valid && (idu_tx_opcode != `load && idu_tx_opcode != `store);
 	assign	idu_tx_to_lsu	=	idu_tx_valid && (idu_tx_opcode == `load	|| idu_tx_opcode == `store);
+
+	assign	idu_dec_rs1_vld	=	opcode == `jalr		||	opcode == `branch	||	opcode == `load	||
+								opcode == `store	||	opcode == `alui		||	opcode == `alur	||
+								op_type == `op_type_csrrw	||	op_type == `op_type_csrrs	||	op_type == `op_type_csrrc;
+
+	assign	idu_dec_rs2_vld	=	opcode == `branch	||	opcode == `store	||	opcode == `alur;
+
+	// Invalidate writing x0
+	assign	idu_dec_rd_vld	=	idu_dec_rd_idx	==	5'd0	?	1'b0	:
+								opcode == `lui		||	opcode == `auipc	||	opcode == `jal	||
+								opcode == `jalr		||	opcode == `load		||	opcode == `alui	||
+								opcode == `alur		||
+								(opcode == `system && op_type != `op_type_ecall && op_type != `op_type_ebreak);
 
 endmodule

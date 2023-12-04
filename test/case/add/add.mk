@@ -1,4 +1,3 @@
-
 gnu = riscv32-unknown-elf
 CC = $(gnu)-gcc
 CFLAGS = -Wall -march=rv32i -mabi=ilp32 -nostartfiles

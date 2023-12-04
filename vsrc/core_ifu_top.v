@@ -15,8 +15,8 @@ module core_ifu_top(
 	output					ifu_tx_valid,
 	input					ifu_tx_ready,
 
-	output		[31:0]		ifu_tx_pc,
-	output		[31:0]		ifu_tx_inst,
+	output	reg	[31:0]		ifu_tx_pc,
+	output	reg	[31:0]		ifu_tx_inst,
 	
 	// Interface to access icache
 	// Todo: AHB Master Controller
@@ -26,7 +26,7 @@ module core_ifu_top(
 	input					bus_rsp_valid,
 	input		[31:0]		bus_rsp_data,
 
-	input					ifu_rx_pc_valid,
+	input					ifu_rx_bc_done,
 	input					ifu_rx_bc_en
 );
 
@@ -53,8 +53,6 @@ module core_ifu_top(
 		.lsu_tx_inst             ( lsu_tx_inst     )
 	);
 
-	assign lsu_rx_addr = ifu_rx_pc;
-
 	/*
 	 * A FIFO is needed because it should sync with the
 	 * instruction read from icache.
@@ -69,7 +67,7 @@ module core_ifu_top(
 	FIFO #(
 		.DATA_WIDTH ( 32 ),
 		.DEPTH      ( 8 ))
-	u_FIFO (
+	pc_buffer (
 		.clk                     ( clk             ),
 		.rstn                    ( rstn            ),
 		.fifo_rx_valid           ( fifo_rx_valid   ),
@@ -80,21 +78,22 @@ module core_ifu_top(
 		.fifo_rx_ready           ( fifo_rx_ready   ),
 		.fifo_tx_valid           ( fifo_tx_valid   )
 	);
-
+	
+	assign lsu_rx_addr = ifu_rx_pc;
 	assign fifo_rx_data = ifu_rx_pc;
 
 	/*
 	 * Only when lsu and fifo are both ready, shoule ifu recv new pc.
 	 */
-	assign ifu_rx_ready = lsu_rx_ready && fifo_rx_ready && ifu_tx_ready;
+	assign ifu_rx_ready = lsu_rx_ready && fifo_rx_ready && s_pres != S_BC_PEND && ifu_tx_ready;
 
 	/*
 	 * One's recv data is not valid if:
 	 	1.	pcr is not valid
 		2.	one peer is not ready
 	 */
-	assign lsu_rx_valid = ifu_rx_valid && fifo_rx_ready;
-	assign fifo_rx_valid = ifu_rx_valid && lsu_rx_ready;
+	assign lsu_rx_valid = ifu_tx_ready && s_pres != S_BC_PEND && ifu_rx_valid && fifo_rx_ready;	// If ifu tx ready is low, tell submodule to not recv
+	assign fifo_rx_valid = ifu_tx_ready && s_pres != S_BC_PEND && ifu_rx_valid && lsu_rx_ready;
 	
 	/*
 	 * Update lsu and fifo control signals
@@ -106,11 +105,11 @@ module core_ifu_top(
 		2. present state is S_BC_PEND
 		3. one of other peers is not valid
 	 */
-	assign lsu_tx_ready 	= 	s_pres == S_RX_PEND	? 	ifu_tx_ready :
+	assign	lsu_tx_ready 	= 	s_pres == S_RX_PEND	? 	ifu_tx_ready :
 								s_pres == S_BC_PEND	?	1'b0 :
 														ifu_tx_ready && fifo_tx_valid;
 
-	assign fifo_tx_ready 	= 	s_pres == S_RX_PEND	? 	ifu_tx_ready :
+	assign	fifo_tx_ready 	= 	s_pres == S_RX_PEND	? 	ifu_tx_ready :
 								s_pres == S_BC_PEND	?	1'b0 :
 														ifu_tx_ready && lsu_tx_valid;
 
@@ -153,6 +152,11 @@ module core_ifu_top(
 	wire tx_ena = ifu_tx_valid && ifu_tx_ready;
 	wire inst_is_branch = lsu_tx_valid && (pre_dec_opcode == `jal || pre_dec_opcode == `jalr || pre_dec_opcode == `branch);
 
+	always @(posedge clk) begin
+		if(rstn && inst_is_branch)
+			$display("IFU: [0x%h] Identified a branch inst...", ifu_tx_pc);
+	end
+
 	reg		[2:0]	rx_counter;
 	reg		[2:0]	tx_counter;
 	reg		[2:0]	fs_counter;
@@ -173,9 +177,11 @@ module core_ifu_top(
 				else
 					s_next = S_RX_PEND;
 			S_TX_PEND:
-				if(inst_is_branch)
+				if(inst_is_branch && tx_ena)
 					s_next = S_BC_PEND;
-				else if(rx_ena)
+				else if(inst_is_branch && !tx_ena)
+					s_next = S_TX_PEND;
+				else if(tx_ena && rx_ena)
 					s_next = S_TX_PEND;
 				else if(tx_ena && tx_counter != rx_counter - 1)
 					s_next = S_TX_PEND;
@@ -184,7 +190,7 @@ module core_ifu_top(
 				else
 					s_next = S_TX_PEND;
 			S_BC_PEND:
-				if(ifu_rx_pc_valid) begin
+				if(ifu_rx_bc_done) begin
 					if(ifu_rx_bc_en)
 						s_next = S_FS_PEND;
 					else if(rx_ena)
@@ -226,8 +232,11 @@ module core_ifu_top(
 				if(rx_ena)
 					rx_counter <= rx_counter + 1;
 			S_TX_PEND: begin
-				if(inst_is_branch)
-					fs_num <= rx_counter - tx_counter - 1;
+				if(tx_ena && inst_is_branch)
+					if(rx_ena)
+						fs_num <= rx_counter - tx_counter;
+					else
+						fs_num <= rx_counter - tx_counter - 1;
 				if(rx_ena)
 					rx_counter <= rx_counter + 1;
 				if(tx_ena)
@@ -236,9 +245,14 @@ module core_ifu_top(
 			S_BC_PEND:
 				;
 			S_FS_PEND: begin
+				if(fs_counter == fs_num - 1) begin
+					tx_counter <= tx_counter + fs_num;
+					fs_counter <= 'd0;
+				end else
+					fs_counter <= fs_counter + 1;
 				if(rx_ena)
 					rx_counter <= rx_counter + 1;
-				fs_counter <= (fs_counter == fs_num - 1) ? 'd0 : fs_counter + 1; // Flush out a inst
+				$display("IFU: Flushing...");
 			end
 		endcase
 	end
@@ -258,7 +272,7 @@ module test;
 	reg   ifu_tx_ready = 1;
 	reg   bus_rsp_valid;
 	reg   [31:0]  bus_rsp_data;
-	reg   ifu_rx_pc_valid = 1;
+	reg   ifu_rx_bc_done = 1;
 	reg   ifu_rx_bc_en = 0;
 
 	always #(10) clk = ~clk;
@@ -279,7 +293,7 @@ module test;
 		.ifu_tx_ready            ( ifu_tx_ready       ),
 		.bus_rsp_valid           ( bus_rsp_valid      ),
 		.bus_rsp_data            ( bus_rsp_data       ),
-		.ifu_rx_pc_valid         ( ifu_rx_pc_valid    ),
+		.ifu_rx_bc_done          ( ifu_rx_bc_done     ),
 		.ifu_rx_bc_en            ( ifu_rx_bc_en       ),
 
 		.ifu_rx_ready            ( ifu_rx_ready       ),
