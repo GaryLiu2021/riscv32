@@ -18,8 +18,8 @@ VERILATOR_FLAGS += $(VERILATOR_INC)
 VERILATOR_MACROS := -D__VERILATOR__ -D__LOG_ENABLE__
 VERILATOR_FLAGS += $(VERILATOR_MACROS)
 # Verilator wrapper file
-VERILATOR_CSRCS = main.cc
-VERILATOR_CFLAGS = -CFLAGS "$(INC_PATH) -L$(lib_dir) -l$(lib_name) -g"
+VERILATOR_CSRCS := main.cc
+VERILATOR_CFLAGS := -CFLAGS "$(INC_PATH) -L$(lib_dir) -l$(lib_name) -g"
 
 # Reference repo
 REPO_PATH = ./spike-diff/repo
@@ -35,6 +35,7 @@ CASES := $(notdir $(wildcard $(CASE_DIR)/*))
 else
 CASES := $(notdir $(CASE_DIR)/$(CASE))
 endif
+# $(foreach file,$(CASES),$(eval VERILATOR_CFLAGS += $(CFLAG_TO_ADD)))
 
 # ------------------------------
 .PHONY: all lib gdb

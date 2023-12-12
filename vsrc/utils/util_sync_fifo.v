@@ -59,7 +59,6 @@ module FIFO #(
 				fifo[i] <= 'd0;
 		else if(rx_ena) begin
 			fifo[rx_ptr] <= fifo_rx_data;
-			// $display("Writing %d into fifo[%d]\n", fifo_rx_data, tx_ptr);
 		end
 	end
 

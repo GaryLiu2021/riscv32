@@ -9,7 +9,7 @@
 #include <string>
 #include <dlfcn.h>
 
-#define RESET_VECTOR 0x80008000
+#define RESET_VECTOR 0x80000000
 #define CONFIG_MBASE 0x80000000
 #define CONFIG_MSIZE 0x08000000
 #define PG_ALIGN __attribute((aligned(4096)))
@@ -40,7 +40,7 @@ CPU_state ref_state;
 
 //! VERILATOR ENVIRONMENT
 
-const char* img_file = "/home/sgap/ysyx-workbench/npc/test/add.bin";
+const char* img_file = "/home/sgap/projects/riscv32/test/case/mult/mult.bin";
 const char* lib_file = "/home/sgap/ysyx-workbench/nemu/tools/spike-diff/build/riscv32-spike-so";
 uint64_t cycles = 0;
 uint64_t times = 0;
@@ -107,11 +107,6 @@ extern "C" {
     }
 
     void call_return() {
-        if (*(dut_gpr + 10) == 1)
-            printf("\n\nProgram returned normally...\n\n");
-        else
-            printf("\n\nProgram returned with error.\n\n");
-        print_dut_gpr();
         finish = true;
     }
 }
@@ -321,7 +316,15 @@ int main(int argc, char** argv, char** env) {
 
         cycles++;
     }
-    printf("Run %ld CYCLES.\n", cycles);
+    if (finish) {
+        if (*(dut_gpr + 10) == 0)
+            printf("\n\nProgram returned normally.\n");
+        else {
+            printf("\n\nProgram returned with error.\n");
+            print_dut_gpr();
+        }
+    }
+    printf("Program consumed %ld cycles.\n\n", cycles);
 
     m_tracep->close();
     delete m_dut;

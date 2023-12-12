@@ -78,7 +78,6 @@ void sim_t::diff_memcpy(reg_t dest, void* src, size_t n) {
   mmu_t* mmu = p->get_mmu();
   for (size_t i = 0; i < n; i++) {
     mmu->store<uint8_t>(dest + i, *((uint8_t*)src + i));
-    printf("From SPIKE: %08x <= %08x\n", dest + i, *((uint8_t*)src + i));
   }
 }
 

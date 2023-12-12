@@ -15,8 +15,8 @@ module core_ifu_top(
 	output					ifu_tx_valid,
 	input					ifu_tx_ready,
 
-	output	reg	[31:0]		ifu_tx_pc,
-	output	reg	[31:0]		ifu_tx_inst,
+	output		[31:0]		ifu_tx_pc,
+	output		[31:0]		ifu_tx_inst,
 	
 	// Interface to access icache
 	// Todo: AHB Master Controller

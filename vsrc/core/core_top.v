@@ -1,7 +1,27 @@
 // `define __DEBUG
-module single_cycle_cpu (
-	input           clk,
-	input           rstn
+module core_top (
+	input           	clk,
+	input           	rstn,
+
+	// IFU => BUS
+	output				core_tx_ifu_addr_vld,
+	output	[31:0]		core_tx_ifu_addr,
+
+	// IFU <= BUS
+	input				core_rx_ifu_inst_vld,
+	input	[31:0]		core_rx_ifu_inst,
+
+	// LSU => BUS
+	output				core_lsu_wen,
+	output				core_lsu_ren,
+	output	[2:0]		core_lsu_rwtyp,
+	output	[31:0]		core_lsu_addr,
+	output	[31:0]		core_lsu_wdata,
+
+	// LSU <= BUS
+	input				core_lsu_wack,
+	input				core_lsu_rvld,
+	input	[31:0]		core_lsu_rdata
 );
 
 	/*
@@ -44,8 +64,8 @@ module single_cycle_cpu (
 	assign	ifu_rx_valid	=	pcr_tx_valid;
 	assign	ifu_rx_pc		=	pcr_tx_pc;
 	assign	ifu_rx_bc_done	=	exu_tx_bc_done;
-	// assign	bus_rsp_valid	=	;
-	// assign	bus_rsp_data	=	;
+	assign	bus_rsp_valid	=	core_rx_ifu_inst_vld;
+	assign	bus_rsp_data	=	core_rx_ifu_inst;
 	assign	ifu_rx_bc_en	=	exu_tx_bc_en;
 	assign	ifu_tx_ready	=	idu_rx_ready;
 
@@ -191,7 +211,7 @@ module single_cycle_cpu (
 	assign	exu_rx_pc		=	idu_tx_pc;
 	assign	exu_rx_op_type	=	idu_tx_op_type;
 	assign	exu_rx_rd_idx	=	idu_tx_rd_idx;
-	assign	exu_tx_ready	=	exu_tx_bc_en ? pcr_rx_bc_ready : gpr_rx_ready; // todo: only jal and jalr need writing both pc and gpr
+	assign	exu_tx_ready	=	exu_tx_bc_en ? pcr_rx_bc_ready : ~lsu_tx_valid && gpr_rx_ready; // todo: only jal and jalr need writing both pc and gpr, lsu write back has higher priority
 
 	/*
 	 * Load Store Unit
@@ -209,6 +229,7 @@ module single_cycle_cpu (
 
 	wire			lsu_rx_ready;
 	wire			lsu_bus_wen;
+	wire			lsu_bus_ren;
 	wire	[2:0]	lsu_bus_rwtyp;
 	wire	[31:0]	lsu_bus_addr;
 	wire	[31:0]	lsu_bus_wdata;
@@ -226,11 +247,14 @@ module single_cycle_cpu (
 		.lsu_rx_rs2_data         ( lsu_rx_rs2_data   ),
 		.lsu_rx_rd_idx           ( lsu_rx_rd_idx     ),
 		.lsu_rx_imme             ( lsu_rx_imme       ),
+		.lsu_bus_wack            ( lsu_bus_wack      ),
+		.lsu_bus_rvld            ( lsu_bus_rvld      ),
 		.lsu_bus_rdata           ( lsu_bus_rdata     ),
 		.lsu_tx_ready            ( lsu_tx_ready      ),
 
 		.lsu_rx_ready            ( lsu_rx_ready      ),
 		.lsu_bus_wen             ( lsu_bus_wen       ),
+		.lsu_bus_ren             ( lsu_bus_ren       ),
 		.lsu_bus_rwtyp           ( lsu_bus_rwtyp     ),
 		.lsu_bus_addr            ( lsu_bus_addr      ),
 		.lsu_bus_wdata           ( lsu_bus_wdata     ),
@@ -246,8 +270,9 @@ module single_cycle_cpu (
 	assign	lsu_rx_rs2_data	=	idu_tx_rs2;
 	assign	lsu_rx_rd_idx	=	idu_tx_rd_idx;
 	assign	lsu_rx_imme		=	idu_tx_imme;
-	assign	lsu_bus_rdata	=	mem_bus_rdata;
-	assign	lsu_bus_rinst	=	mem_bus_rinst;
+	assign	lsu_bus_wack	=	core_lsu_wack;
+	assign	lsu_bus_rvld	=	core_lsu_rvld;
+	assign	lsu_bus_rdata	=	core_lsu_rdata;
 	assign	lsu_tx_ready	=	gpr_rx_ready;
 
 	/*
@@ -379,41 +404,24 @@ module single_cycle_cpu (
 	assign	scb_emit_rs1_idx	=	idu_dec_rs1_idx;
 	assign	scb_emit_rs2_idx	=	idu_dec_rs2_idx;
 	assign	scb_emit_rd_idx		=	idu_dec_rd_idx;
-	assign	scb_ret_reg_idx		=	exu_tx_valid	?	exu_tx_rd_idx	:
-									lsu_tx_valid	?	lsu_tx_rd_idx	:
+	assign	scb_ret_reg_idx		=	lsu_tx_valid	?	lsu_tx_rd_idx	:
+									exu_tx_valid	?	exu_tx_rd_idx	:
 														'd0				; // todo: what if gpr is not ready to write
 	assign	scb_ret_reg_valid	=	exu_tx_valid || lsu_tx_valid;
 
 	/*
-	 * Memory Controller
+	 * BUS interface
 	 */
-	wire			mem_bus_wen;
-	wire	[2:0]	mem_bus_rwtyp;
-	wire	[31:0]	mem_bus_addr;
-	wire	[31:0]	mem_bus_wdata;
-	wire	[31:0]	mem_bus_iaddr;
+	assign	core_tx_ifu_addr		=	bus_req_addr;
+	assign	core_tx_ifu_addr_vld	=	bus_req_valid;
+	
+	assign	core_lsu_wen	=	lsu_bus_wen;
+	assign	core_lsu_ren	=	lsu_bus_ren;
+	assign	core_lsu_rwtyp	=	lsu_bus_rwtyp;
+	assign	core_lsu_addr	=	lsu_bus_addr;
+	assign	core_lsu_wdata	=	lsu_bus_wdata;
 
-	wire	[31:0]	mem_bus_rdata;
-	wire	[31:0]	mem_bus_rinst;
-
-	mem_ctrl  u_mem_ctrl (
-		.clk                     ( clk             ),
-		.rstn                    ( rstn            ),
-		.mem_bus_wen             ( mem_bus_wen     ),
-		.mem_bus_rwtyp           ( mem_bus_rwtyp   ),
-		.mem_bus_addr            ( mem_bus_addr    ),
-		.mem_bus_wdata           ( mem_bus_wdata   ),
-		.mem_bus_iaddr           ( mem_bus_iaddr   ),
-
-		.mem_bus_rdata           ( mem_bus_rdata   ),
-		.mem_bus_rinst           ( mem_bus_rinst   )
-	);
-
-	assign	mem_bus_wen		=	lsu_bus_wen;
-	assign	mem_bus_rwtyp	=	lsu_bus_rwtyp;
-	assign	mem_bus_addr	=	lsu_bus_addr;
-	assign	mem_bus_wdata	=	lsu_bus_wdata;
-
+`ifdef __LOG_ENABLE__
 	reg [63:0] inst_str [63:0];
     initial begin
         inst_str[`op_type_lui]      <= "lui";
@@ -528,6 +536,7 @@ module single_cycle_cpu (
 			if(lsu_rx_opcode == `store)
 				$display("LSU: [0x%h] Storing mem[%h]...", idu_tx_pc, lsu_bus_addr);
 	end
+`endif	// __LOG_ENABLE__
 
 `ifdef __VERILATOR__
 	import "DPI-C" function void set_ptr_pc(input logic [31:0] pc []);
@@ -540,30 +549,13 @@ module single_cycle_cpu (
 	end
 
 	always @(posedge clk) begin
-        if(ifu_tx_inst == 32'b00000000000100000000000001110011) // ebreak
+        if(idu_tx_op_type == `op_type_ebreak) // ebreak
             call_return();
-        if(ifu_tx_inst == 32'b00000000000000000000000001110011) // ecall
+        if(idu_tx_op_type == `op_type_ecall) // ecall
             call_return();
-        if(ifu_tx_inst == 32'b00000000000000001000000001100111) // return
+        if(idu_tx_op_type == `op_type_jalr) // return
             call_return();
     end
-`endif
+`endif	// __VERILATOR__
 
-	// dpi_verilator  u_dpi_verilator (
-	// 	.clk                     ( clk             ),
-	// 	.rstn                    ( rstn            ),
-	// 	.mem_inst_out            ( mem_inst_out    ),
-	// 	.mem_data_addr           ( mem_data_addr   ),
-	// 	.mem_data_in             ( mem_data_in     ),
-	// 	.mem_data_out            ( mem_data_out    ),
-	// 	.pc_out                  ( pc_out          ),
-	// 	.imme                    ( imme            ),
-	// 	.reg_addr_rd             ( reg_addr_rd     ),
-	// 	.reg_addr_rs1            ( reg_addr_rs1    ),
-	// 	.reg_data_rs1            ( reg_data_rs1    ),
-	// 	.reg_addr_rs2            ( reg_addr_rs2    ),
-	// 	.opcode                  ( opcode          ),
-	// 	.op_type                 ( op_type         )
-	// );
-
-endmodule //single_cycle_cpu
+endmodule

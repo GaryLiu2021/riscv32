@@ -1,7 +1,7 @@
 `ifndef __INST_DEFINE
 `define __INST_DEFINE
 
-`define RESET_VECTOR 32'h80008000
+`define RESET_VECTOR 32'h80000000
 // U type: long imme
 `define lui     7'b0110111
 `define auipc   7'b0010111

@@ -96,14 +96,18 @@ module reg_pcr (
 			S_RX_PEND:
 				if(rx_bc_pc_ena) begin
 					pcr_tx_pc <= pcr_rx_bc_pc;
+				`ifdef __LOG_ENABLE__
 					$display("PCR: Jumping to [0x%h]", pcr_rx_bc_pc);
+				`endif
 				end
 				else if(rx_seq_pc_ena)
 					pcr_tx_pc <= pcr_seq_pc;
 			S_TX_PEND:
 				if(rx_bc_pc_ena) begin
 					pcr_tx_pc <= pcr_rx_bc_pc;
+				`ifdef __LOG_ENABLE__
 					$display("PCR: Jumping to [0x%h]", pcr_rx_bc_pc);
+				`endif
 				end
 				else if(rx_seq_pc_ena)
 					pcr_tx_pc <= pcr_seq_pc;

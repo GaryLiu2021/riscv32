@@ -72,23 +72,8 @@ module gpr (
 `ifdef	__LOG_ENABLE__
 	always @(posedge clk) begin
 		if(reg_wr_en)
-			$display("writing data %h into gpr[%0d]", reg_data_rd, gpr_rx_rd_idx);
+			$display("GPR: gpr[%0d] <= %h", reg_data_rd, gpr_rx_rd_idx);
 	end
 `endif
-
-	// always @(posedge clk) begin
-	// 	if(op_type == `op_type_ecall && gpr[17] == 32'd93) begin
-	// 		if(gpr[10] == 'd0)
-	// 			$display("Pass!!!");
-	// 		else
-	// 			$display("Fail!!!");
-	// 		#(1) $finish;
-	// 	end
-	// end
-
-	
-
-	
-
 
 endmodule //gpr
