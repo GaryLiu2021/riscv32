@@ -1,6 +1,6 @@
 #include <verilated.h>
 #include <verilated_vcd_c.h>
-#include "Vsim.h"
+#include "Vsoc_top.h"
 #include "verilated_dpi.h"
 #include <svdpi.h>
 #include <stdio.h>
@@ -263,7 +263,7 @@ int main(int argc, char** argv, char** env) {
 
     Verilated::traceEverOn(true);
     VerilatedVcdC* m_tracep = new VerilatedVcdC;         // 波形
-    Vsim* m_dut = new Vsim;
+    Vsoc_top* m_dut = new Vsoc_top;
 
     m_dut->trace(m_tracep, 5);
     m_tracep->open("wave.vcd");

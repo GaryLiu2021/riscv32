@@ -2,17 +2,20 @@
 WAVE_DIR=./wave
 VSRC_DIR=../../vsrc
 CASE_DIR = ../case
+VINC_DIR = ../../vsrc/include
 
 # Verilator flags
-VERILATOR_FLAGS = --timing -Wno-fatal -Wall -cc -exe -build --trace 
+VERILATOR_FLAGS = --timing -Wno-fatal -Wall -cc -exe -build --trace --sv 
 
 # Verilog srcs
 VERILOG_VSRCS := $(VSRC_DIR)/*.v
+VERILOG_VSRCS += $(VSRC_DIR)/*/*.sv
+VERILOG_VSRCS += $(VSRC_DIR)/*/*.v
 # Verilog top module
-VERILOG_TOP := sim
+VERILOG_TOP := soc_top
 VERILATOR_FLAGS += --top-module $(VERILOG_TOP) 
 # Verilator include
-VERILATOR_INC := -I$(VSRC_DIR)
+VERILATOR_INC := -I$(VINC_DIR)
 VERILATOR_FLAGS += $(VERILATOR_INC)
 # Verilator macros
 VERILATOR_MACROS := -D__VERILATOR__ -D__LOG_ENABLE__

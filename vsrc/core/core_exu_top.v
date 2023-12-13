@@ -279,7 +279,7 @@ module core_exu_top (
 			if(exu_tx_pc_sel)
 				exu_tx_pc <= exu_rx_pc;
 			if(exu_tx_pc_seq_sel)
-				exu_tx_pc <= exu_rx_pc + 32'd4;
+				exu_tx_pc_seq <= exu_rx_pc + 32'd4;
 			if(exu_tx_imme_sel)
 				exu_tx_imme <= exu_rx_imme;
 		end

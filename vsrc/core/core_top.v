@@ -4,24 +4,24 @@ module core_top (
 	input           	rstn,
 
 	// IFU => BUS
-	output				core_tx_ifu_addr_vld,
-	output	[31:0]		core_tx_ifu_addr,
+	output				core_ifu_addr_vld,
+	output	[31:0]		core_ifu_addr,
 
 	// IFU <= BUS
-	input				core_rx_ifu_inst_vld,
-	input	[31:0]		core_rx_ifu_inst,
+	input				core_ifu_inst_vld,
+	input	[31:0]		core_ifu_inst,
 
 	// LSU => BUS
+	output				core_lsu_req_vld,
 	output				core_lsu_wen,
-	output				core_lsu_ren,
 	output	[2:0]		core_lsu_rwtyp,
 	output	[31:0]		core_lsu_addr,
 	output	[31:0]		core_lsu_wdata,
+	input				core_lsu_req_rdy,
 
-	// LSU <= BUS
-	input				core_lsu_wack,
-	input				core_lsu_rvld,
-	input	[31:0]		core_lsu_rdata
+	input				core_lsu_resp_vld,
+	input	[31:0]		core_lsu_resp_rdata,
+	output				core_lsu_resp_rdy
 );
 
 	/*
@@ -60,14 +60,6 @@ module core_top (
 		.bus_req_valid           ( bus_req_valid     ),
 		.bus_req_addr            ( bus_req_addr      )
 	);
-
-	assign	ifu_rx_valid	=	pcr_tx_valid;
-	assign	ifu_rx_pc		=	pcr_tx_pc;
-	assign	ifu_rx_bc_done	=	exu_tx_bc_done;
-	assign	bus_rsp_valid	=	core_rx_ifu_inst_vld;
-	assign	bus_rsp_data	=	core_rx_ifu_inst;
-	assign	ifu_rx_bc_en	=	exu_tx_bc_en;
-	assign	ifu_tx_ready	=	idu_rx_ready;
 
 	/*
 	 * Instruction Decode Unit
@@ -130,15 +122,6 @@ module core_top (
 		.idu_tx_to_exu           ( idu_tx_to_exu     ),
 		.idu_tx_to_lsu           ( idu_tx_to_lsu     )
 	);
-
-	assign	idu_rx_pc		=	ifu_tx_pc;
-	assign	idu_rx_inst		=	ifu_tx_inst;
-	assign	idu_rx_valid	=	ifu_tx_valid;
-	assign	idu_rx_rs1		=	gpr_tx_rs1;
-	assign	idu_rx_rs2		=	gpr_tx_rs2;
-	assign	idu_tx_ready	=	idu_tx_to_exu	?	exu_rx_ready	:
-								idu_tx_to_lsu	?	lsu_rx_ready	:	
-													exu_rx_ready && lsu_rx_ready;
 
 	wire	idu_lsu_en	=	idu_tx_opcode == `load || idu_tx_opcode == `store;
 	wire	idu_exu_en	=	~idu_lsu_en;
@@ -203,16 +186,6 @@ module core_top (
 		.exu_tx_bc_pc            ( exu_tx_bc_pc          )
 	);
 
-	assign	exu_rx_valid	=	idu_tx_valid && idu_exu_en;
-	assign	exu_rx_opcode	=	idu_tx_opcode;
-	assign	exu_rx_imme		=	idu_tx_imme;
-	assign	exu_rx_rs1		=	idu_tx_rs1;
-	assign	exu_rx_rs2		=	idu_tx_rs2;
-	assign	exu_rx_pc		=	idu_tx_pc;
-	assign	exu_rx_op_type	=	idu_tx_op_type;
-	assign	exu_rx_rd_idx	=	idu_tx_rd_idx;
-	assign	exu_tx_ready	=	exu_tx_bc_en ? pcr_rx_bc_ready : ~lsu_tx_valid && gpr_rx_ready; // todo: only jal and jalr need writing both pc and gpr, lsu write back has higher priority
-
 	/*
 	 * Load Store Unit
 	 */
@@ -223,16 +196,14 @@ module core_top (
 	wire	[31:0]	lsu_rx_rs2_data;
 	wire	[4:0]	lsu_rx_rd_idx;
 	wire	[31:0]	lsu_rx_imme;
-	wire	[31:0]	lsu_bus_rdata;
-	wire	[31:0]	lsu_bus_rinst;
 	wire			lsu_tx_ready;
 
 	wire			lsu_rx_ready;
-	wire			lsu_bus_wen;
-	wire			lsu_bus_ren;
-	wire	[2:0]	lsu_bus_rwtyp;
-	wire	[31:0]	lsu_bus_addr;
-	wire	[31:0]	lsu_bus_wdata;
+	wire			lsu_req_wen;
+	wire	[2:0]	lsu_req_rwtyp;
+	wire	[31:0]	lsu_req_addr;
+	wire	[31:0]	lsu_req_wdata;
+	wire			lsu_resp_rdy;
 	wire			lsu_tx_valid;
 	wire	[31:0]	lsu_tx_data;
 	wire	[4:0]	lsu_tx_rd_idx;
@@ -247,33 +218,22 @@ module core_top (
 		.lsu_rx_rs2_data         ( lsu_rx_rs2_data   ),
 		.lsu_rx_rd_idx           ( lsu_rx_rd_idx     ),
 		.lsu_rx_imme             ( lsu_rx_imme       ),
-		.lsu_bus_wack            ( lsu_bus_wack      ),
-		.lsu_bus_rvld            ( lsu_bus_rvld      ),
-		.lsu_bus_rdata           ( lsu_bus_rdata     ),
+		.lsu_req_rdy             ( lsu_req_rdy       ),
+		.lsu_resp_vld            ( lsu_resp_vld      ),
+		.lsu_resp_rdata          ( lsu_resp_rdata    ),
 		.lsu_tx_ready            ( lsu_tx_ready      ),
 
 		.lsu_rx_ready            ( lsu_rx_ready      ),
-		.lsu_bus_wen             ( lsu_bus_wen       ),
-		.lsu_bus_ren             ( lsu_bus_ren       ),
-		.lsu_bus_rwtyp           ( lsu_bus_rwtyp     ),
-		.lsu_bus_addr            ( lsu_bus_addr      ),
-		.lsu_bus_wdata           ( lsu_bus_wdata     ),
+		.lsu_req_vld             ( lsu_req_vld       ),
+		.lsu_req_wen             ( lsu_req_wen       ),
+		.lsu_req_rwtyp           ( lsu_req_rwtyp     ),
+		.lsu_req_addr            ( lsu_req_addr      ),
+		.lsu_req_wdata           ( lsu_req_wdata     ),
+		.lsu_resp_rdy            ( lsu_resp_rdy      ),
 		.lsu_tx_valid            ( lsu_tx_valid      ),
 		.lsu_tx_data             ( lsu_tx_data       ),
 		.lsu_tx_rd_idx           ( lsu_tx_rd_idx     )
 	);
-
-	assign	lsu_rx_valid	=	idu_tx_valid && idu_lsu_en;
-	assign	lsu_rx_opcode	=	idu_tx_opcode;
-	assign	lsu_rx_func3	=	idu_tx_func3;
-	assign	lsu_rx_rs1_data	=	idu_tx_rs1;
-	assign	lsu_rx_rs2_data	=	idu_tx_rs2;
-	assign	lsu_rx_rd_idx	=	idu_tx_rd_idx;
-	assign	lsu_rx_imme		=	idu_tx_imme;
-	assign	lsu_bus_wack	=	core_lsu_wack;
-	assign	lsu_bus_rvld	=	core_lsu_rvld;
-	assign	lsu_bus_rdata	=	core_lsu_rdata;
-	assign	lsu_tx_ready	=	gpr_rx_ready;
 
 	/*
 	 * Program Counter
@@ -296,10 +256,6 @@ module core_top (
 		.pcr_tx_valid            ( pcr_tx_valid      ),
 		.pcr_tx_pc               ( pcr_tx_pc         )
 	);
-
-	assign	pcr_rx_bc_valid	=	exu_tx_bc_en;
-	assign	pcr_rx_bc_pc	=	exu_tx_bc_pc;
-	assign	pcr_tx_ready	=	ifu_rx_ready;
 
 	/*
 	 * General Purpose Registor
@@ -348,24 +304,6 @@ module core_top (
 		.gpr_rx_ready            ( gpr_rx_ready          )
 	);
 
-	assign	gpr_rx_rs1_idx		=	idu_dec_rs1_idx;
-	assign	gpr_rx_rs2_idx		=	idu_dec_rs2_idx;
-	assign	gpr_rx_rd_idx		=	exu_tx_valid	?	exu_tx_rd_idx	:
-									lsu_tx_valid	?	lsu_tx_rd_idx	:
-														'd0				;
-	assign	gpr_rx_exu_res		=	exu_tx_exu_res;
-	assign	gpr_rx_pc			=	exu_tx_pc;
-	assign	gpr_rx_imme			=	exu_tx_imme;
-	assign	gpr_rx_pc_seq		=	exu_tx_pc_seq;
-	assign	gpr_rx_mem			=	lsu_tx_data;
-	//todo	assign	gpr_rx_csr			=	;
-	assign	gpr_rx_imme_valid	=	exu_tx_imme_valid;
-	assign	gpr_rx_pc_valid		=	exu_tx_pc_valid;
-	assign	gpr_rx_pc_seq_valid	=	exu_tx_pc_seq_valid;
-	assign	gpr_rx_csr_valid	=	exu_tx_csr_valid;
-	assign	gpr_rx_mem_valid	=	lsu_tx_valid;
-	assign	gpr_rx_alu_valid	=	exu_tx_alu_valid;
-
 	/*
 	 * Score Board
 	 */
@@ -397,6 +335,77 @@ module core_top (
 		.reg_rs_ready            ( reg_rs_ready         )
 	);
 
+
+
+	/*
+	 * Assignments
+	 */
+	// IFU
+	assign	ifu_rx_valid	=	pcr_tx_valid;
+	assign	ifu_rx_pc		=	pcr_tx_pc;
+	assign	ifu_rx_bc_done	=	exu_tx_bc_done;
+	assign	bus_rsp_valid	=	core_ifu_inst_vld;
+	assign	bus_rsp_data	=	core_ifu_inst;
+	assign	ifu_rx_bc_en	=	exu_tx_bc_en;
+	assign	ifu_tx_ready	=	idu_rx_ready;
+
+	assign	idu_rx_pc		=	ifu_tx_pc;
+	assign	idu_rx_inst		=	ifu_tx_inst;
+	assign	idu_rx_valid	=	ifu_tx_valid;
+	assign	idu_rx_rs1		=	gpr_tx_rs1;
+	assign	idu_rx_rs2		=	gpr_tx_rs2;
+	assign	idu_tx_ready	=	idu_tx_to_exu	?	exu_rx_ready	:
+								idu_tx_to_lsu	?	lsu_rx_ready	:	
+													exu_rx_ready && lsu_rx_ready;
+	// EXU
+	assign	exu_rx_valid	=	idu_tx_valid && idu_exu_en;
+	assign	exu_rx_opcode	=	idu_tx_opcode;
+	assign	exu_rx_imme		=	idu_tx_imme;
+	assign	exu_rx_rs1		=	idu_tx_rs1;
+	assign	exu_rx_rs2		=	idu_tx_rs2;
+	assign	exu_rx_pc		=	idu_tx_pc;
+	assign	exu_rx_op_type	=	idu_tx_op_type;
+	assign	exu_rx_rd_idx	=	idu_tx_rd_idx;
+	assign	exu_tx_ready	=	exu_tx_bc_en ? pcr_rx_bc_ready : ~lsu_tx_valid && gpr_rx_ready; // todo: only jal and jalr need writing both pc and gpr, lsu write back has higher priority
+	
+	// LSU
+	assign	lsu_rx_valid	=	idu_tx_valid && idu_lsu_en;
+	assign	lsu_rx_opcode	=	idu_tx_opcode;
+	assign	lsu_rx_func3	=	idu_tx_func3;
+	assign	lsu_rx_rs1_data	=	idu_tx_rs1;
+	assign	lsu_rx_rs2_data	=	idu_tx_rs2;
+	assign	lsu_rx_rd_idx	=	idu_tx_rd_idx;
+	assign	lsu_rx_imme		=	idu_tx_imme;
+	assign	lsu_req_rdy		=	core_lsu_req_rdy;
+	assign	lsu_resp_vld	=	core_lsu_resp_vld;
+	assign	lsu_resp_rdata	=	core_lsu_resp_rdata;
+	assign	lsu_tx_ready	=	gpr_rx_ready;
+
+	// PCR
+	assign	pcr_rx_bc_valid	=	exu_tx_bc_en;
+	assign	pcr_rx_bc_pc	=	exu_tx_bc_pc;
+	assign	pcr_tx_ready	=	ifu_rx_ready;
+
+	// GPR
+	assign	gpr_rx_rs1_idx		=	idu_dec_rs1_idx;
+	assign	gpr_rx_rs2_idx		=	idu_dec_rs2_idx;
+	assign	gpr_rx_rd_idx		=	exu_tx_valid	?	exu_tx_rd_idx	:
+									lsu_tx_valid	?	lsu_tx_rd_idx	:
+														'd0				;
+	assign	gpr_rx_exu_res		=	exu_tx_exu_res;
+	assign	gpr_rx_pc			=	exu_tx_pc;
+	assign	gpr_rx_imme			=	exu_tx_imme;
+	assign	gpr_rx_pc_seq		=	exu_tx_pc_seq;
+	assign	gpr_rx_mem			=	lsu_tx_data;
+	//todo	assign	gpr_rx_csr			=	;
+	assign	gpr_rx_imme_valid	=	exu_tx_imme_valid;
+	assign	gpr_rx_pc_valid		=	exu_tx_pc_valid;
+	assign	gpr_rx_pc_seq_valid	=	exu_tx_pc_seq_valid;
+	assign	gpr_rx_csr_valid	=	exu_tx_csr_valid;
+	assign	gpr_rx_mem_valid	=	lsu_tx_valid;
+	assign	gpr_rx_alu_valid	=	exu_tx_alu_valid;
+
+	// SCB
 	assign	scb_emit_idx_valid	=	idu_rx_valid;
 	assign	scb_emit_rs1_vld	=	idu_dec_rs1_vld;
 	assign	scb_emit_rs2_vld	=	idu_dec_rs2_vld;
@@ -412,14 +421,15 @@ module core_top (
 	/*
 	 * BUS interface
 	 */
-	assign	core_tx_ifu_addr		=	bus_req_addr;
-	assign	core_tx_ifu_addr_vld	=	bus_req_valid;
+	assign	core_ifu_addr		=	bus_req_addr;
+	assign	core_ifu_addr_vld	=	bus_req_valid;
 	
-	assign	core_lsu_wen	=	lsu_bus_wen;
-	assign	core_lsu_ren	=	lsu_bus_ren;
-	assign	core_lsu_rwtyp	=	lsu_bus_rwtyp;
-	assign	core_lsu_addr	=	lsu_bus_addr;
-	assign	core_lsu_wdata	=	lsu_bus_wdata;
+	assign	core_lsu_req_vld	=	lsu_req_vld;
+	assign	core_lsu_wen		=	lsu_req_wen;
+	assign	core_lsu_rwtyp		=	lsu_req_rwtyp;
+	assign	core_lsu_addr		=	lsu_req_addr;
+	assign	core_lsu_wdata		=	lsu_req_wdata;
+	assign	core_lsu_resp_rdy	=	lsu_resp_rdy;
 
 `ifdef __LOG_ENABLE__
 	reg [63:0] inst_str [63:0];
@@ -532,9 +542,9 @@ module core_top (
 			$display("EXU: [0x%h] Begin executing...\t", exu_rx_pc);
 		if(lsu_rx_valid && lsu_rx_ready)
 			if(lsu_rx_opcode == `load)
-				$display("LSU: [0x%h] Loading mem[%h]...", idu_tx_pc, lsu_bus_addr);
+				$display("LSU: [0x%h] Sending load[%h] request...", idu_tx_pc, core_lsu_addr);
 			if(lsu_rx_opcode == `store)
-				$display("LSU: [0x%h] Storing mem[%h]...", idu_tx_pc, lsu_bus_addr);
+				$display("LSU: [0x%h] Sending store[%h] request...", idu_tx_pc, core_lsu_addr);
 	end
 `endif	// __LOG_ENABLE__
 
