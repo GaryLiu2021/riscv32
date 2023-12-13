@@ -124,8 +124,10 @@ extern "C" {
 
 enum { DIFFTEST_TO_DUT, DIFFTEST_TO_REF };
 
-long load_img() {
-    FILE* fp = fopen(img_file, "rb");
+long load_img(char* program) {
+    std::string program_str(program);
+    std::string program_file = "/home/sgap/projects/riscv32/test/case/" + program_str + "/" + program_str + ".bin";
+    FILE* fp = fopen(program_file.c_str(), "rb");
     assert(fp);
 
     fseek(fp, 0, SEEK_END);
@@ -259,7 +261,7 @@ void difftest_step(vaddr_t pc, vaddr_t npc) {
 
 int main(int argc, char** argv, char** env) {
 
-    long img_size = load_img();
+    long img_size = load_img(argv[1]);
 
     Verilated::traceEverOn(true);
     VerilatedVcdC* m_tracep = new VerilatedVcdC;         // 波形
@@ -298,7 +300,7 @@ int main(int argc, char** argv, char** env) {
     dut_state_dump();
     init_difftest(lib_file, img_size, 1234);
 
-    while (!finish && cycles < 10000) {
+    while (!finish && cycles < 1000) {
         printf("\nCYCLE %ld\n", cycles);
         print_dut_pc();
         // print_dut_inst();

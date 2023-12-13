@@ -1,7 +1,9 @@
-RESET_GPR:
+.section .init
+.global _start
+_start:
 			li	ra,0
-			li	sp,80200000
-			li	gp,80200000
+			li	sp,0x80200000
+			li	gp,0x80200000
 			li	tp,0
 			li	t0,0
 			li	t1,0

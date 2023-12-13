@@ -53,7 +53,7 @@ $(CASES): lib
 
 	@echo "\n\n\tSimulation Begin!\n\n"
 
-	./obj_dir/V$(VERILOG_TOP) | tee log.txt
+	./obj_dir/V$(VERILOG_TOP) $@ | tee log.txt
 	mkdir -p $(WAVE_DIR)
 	mv -i -v *.vcd $(WAVE_DIR)
 

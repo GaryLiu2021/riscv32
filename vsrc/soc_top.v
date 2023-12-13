@@ -104,7 +104,7 @@ module soc_top(
 	wire			rom_tx_valid;
 	wire	[31:0]	rom_tx_data;
 
-	simple_rom  u_simple_rom (
+	emu_rom  u_emu_rom (
 		.clk                     ( clk            ),
 		.rstn                    ( rstn           ),
 		.rom_rx_valid            ( rom_rx_valid   ),

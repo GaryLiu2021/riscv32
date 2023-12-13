@@ -1,4 +1,4 @@
-module simple_rom (
+module emu_rom (
 	// Global Signal
 	input				clk,
 	input				rstn,
@@ -24,6 +24,17 @@ module simple_rom (
 			rom_tx_valid	<=	1'b1;
 			rom_tx_data		<=	memory[rom_rx_addr[15:2]];
 		end
+		else
+			rom_tx_valid	<=	1'b0;
 	end
 
-endmodule //simple_rom
+`ifdef __VERILATOR__
+
+	import "DPI-C" function void set_ptr_mem(input logic [31:0] memory []);
+	initial begin
+		set_ptr_mem(memory);
+	end
+
+`endif
+
+endmodule //emu_rom

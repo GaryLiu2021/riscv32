@@ -44,20 +44,19 @@ module ram_top (
         .hrdata(hrdata)
     );
 
-    spram #(
-        .ADDR_WIDTH ( 16    ),
-        .DATA_WIDTH ( 32    ),
-        .RAM_DEPTH  ( 65536 ))
-    u_spram (
-        .clk                     ( clk       ),
-        .rstn                    ( rstn      ),
-        .address                 ( address   ),
-        .rden                    ( rden      ),
-        .wren                    ( wren      ),
-        .data                    ( data      ),
-        .rwtyp                   ( rwtyp     ),
+    emu_ram #(
+        .ADDR_WIDTH ( 32 ),
+        .DATA_WIDTH ( 32 ))
+    u_emu_ram (
+        .clk                     ( clk     ),
+        .rstn                    ( rstn    ),
+        .rwtyp                   ( rwtyp   ),
+        .addr                    ( addr    ),
+        .data                    ( data    ),
+        .wren                    ( wren    ),
+        .rden                    ( rden    ),
 
-        .q                       ( q         )
+        .q                       ( q       )
     );
 
 endmodule

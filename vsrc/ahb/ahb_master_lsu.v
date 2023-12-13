@@ -50,17 +50,17 @@ module ahb_lsu_master(
 	always @(*) begin
 		case(s_pres)
 			S_IDLE:
-				s_next	=	ahbm_lsu_req_ena	?	S_ADDR	:	S_IDLE;
+				s_next	=	ahbm_lsu_req_ena	?	S_GRANT	:	S_IDLE;
 			S_GRANT:
 				s_next	=	hgrant_h2m			?	S_ADDR	:	S_GRANT;
 			S_ADDR:
 				s_next	=	hwrite_m2h			?	S_WRITE	:	S_READ;
 			S_WRITE:
 				s_next	=	~hready_s2m			?	S_WRITE	:
-							ahbm_lsu_req_ena	?	S_GRANT	:	S_WRITE;
+							ahbm_lsu_req_ena	?	S_GRANT	:	S_IDLE;
 			S_READ:
 				s_next	=	~hready_s2m			?	S_READ	:
-							ahbm_lsu_req_ena	?	S_GRANT	:	S_READ;
+							ahbm_lsu_req_ena	?	S_GRANT	:	S_IDLE;
 			default:
 				s_next	=	S_IDLE;
 		endcase
@@ -83,7 +83,7 @@ module ahb_lsu_master(
 			end
 			S_GRANT: begin
 				ahb_req_rdy		<=	1'b0;
-				haddr_m2h		<=	{2'b00, ahbm_lsu_req_rwtyp, ahbm_lsu_req_addr[26:0]};
+				haddr_m2h		<=	{ahbm_lsu_req_addr[31:30], ahbm_lsu_req_rwtyp, ahbm_lsu_req_addr[26:0]};
 				hwrite_m2h		<=	ahbm_lsu_req_wen;
 				hwdata_m2h		<=	ahbm_lsu_req_wdata;
 				hbusreq_m2h		<=	1'b1;

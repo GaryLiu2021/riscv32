@@ -542,9 +542,9 @@ module core_top (
 			$display("EXU: [0x%h] Begin executing...\t", exu_rx_pc);
 		if(lsu_rx_valid && lsu_rx_ready)
 			if(lsu_rx_opcode == `load)
-				$display("LSU: [0x%h] Sending load[%h] request...", idu_tx_pc, core_lsu_addr);
+				$display("LSU: [0x%h] Sending load request to MEM[0x%h]...", idu_tx_pc, core_lsu_addr);
 			if(lsu_rx_opcode == `store)
-				$display("LSU: [0x%h] Sending store[%h] request...", idu_tx_pc, core_lsu_addr);
+				$display("LSU: [0x%h] Sending store request to MEM[0x%h]...", idu_tx_pc, core_lsu_addr);
 	end
 `endif	// __LOG_ENABLE__
 

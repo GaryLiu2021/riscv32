@@ -72,7 +72,7 @@ module gpr (
 `ifdef	__LOG_ENABLE__
 	always @(posedge clk) begin
 		if(reg_wr_en)
-			$display("GPR: gpr[%0d] <= %h", reg_data_rd, gpr_rx_rd_idx);
+			$display("GPR: gpr[%0d] <= %h", gpr_rx_rd_idx, reg_data_rd);
 	end
 `endif
 

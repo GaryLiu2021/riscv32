@@ -57,14 +57,4 @@ module core_ifu_lsu(
 	assign lsu_tx_valid = fifo_tx_valid;
 	assign lsu_tx_inst = fifo_tx_data;
 
-// `ifdef __VERILATOR__
-
-// 	import "DPI-C" function void set_ptr_mem(input logic [31:0] icache []);
-// 	initial begin
-// 		set_ptr_mem(icache);
-//         // $readmemb("/home/sgap/ysyx-workbench/npc/vsrc/mem.init", mem);
-//     end
-
-// `endif
-
 endmodule
