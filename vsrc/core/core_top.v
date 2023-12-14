@@ -196,6 +196,9 @@ module core_top (
 	wire	[31:0]	lsu_rx_rs2_data;
 	wire	[4:0]	lsu_rx_rd_idx;
 	wire	[31:0]	lsu_rx_imme;
+	wire			lsu_req_rdy;   
+	wire			lsu_resp_vld;  
+	wire	[31:0]	lsu_resp_rdata;
 	wire			lsu_tx_ready;
 
 	wire			lsu_rx_ready;
@@ -406,7 +409,7 @@ module core_top (
 	assign	gpr_rx_alu_valid	=	exu_tx_alu_valid;
 
 	// SCB
-	assign	scb_emit_idx_valid	=	idu_rx_valid;
+	assign	scb_emit_idx_valid	=	idu_rx_valid && idu_rx_ready;
 	assign	scb_emit_rs1_vld	=	idu_dec_rs1_vld;
 	assign	scb_emit_rs2_vld	=	idu_dec_rs2_vld;
 	assign	scb_emit_rd_vld		=	idu_dec_rd_vld;
@@ -540,11 +543,11 @@ module core_top (
 			$display("IDU: [0x%h] Begin decoding inst:\t%h", idu_rx_pc, idu_rx_inst);
 		if(exu_rx_valid && exu_rx_ready)
 			$display("EXU: [0x%h] Begin executing...\t", exu_rx_pc);
-		if(lsu_rx_valid && lsu_rx_ready)
-			if(lsu_rx_opcode == `load)
-				$display("LSU: [0x%h] Sending load request to MEM[0x%h]...", idu_tx_pc, core_lsu_addr);
-			if(lsu_rx_opcode == `store)
-				$display("LSU: [0x%h] Sending store request to MEM[0x%h]...", idu_tx_pc, core_lsu_addr);
+		// if(lsu_rx_valid && lsu_rx_ready)
+		// 	if(lsu_rx_opcode == `load)
+		// 		$display("LSU: [0x%h] Sending load request to MEM[0x%h]...", idu_tx_pc, core_lsu_addr);
+		// 	if(lsu_rx_opcode == `store)
+		// 		$display("LSU: [0x%h] Sending store request to MEM[0x%h]...", idu_tx_pc, core_lsu_addr);
 	end
 `endif	// __LOG_ENABLE__
 

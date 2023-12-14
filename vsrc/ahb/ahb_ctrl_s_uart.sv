@@ -49,6 +49,35 @@ module ahb2uart (
     wire [1:0]                          last_tx_cnt;
     wire [1:0]                          last_rx_cnt;
 
+    reg [`AHB_DATA_WIDTH - 1:0]         wdata_s;
+    reg [`AHB_DATA_WIDTH - 1:0]         rdata_s;
+    reg                                 wd_buffer_wen_s;
+    reg                                 rd_buffer_ren_s;
+    reg                                 hready_s;
+    reg                                 reg_resp_s;
+    reg                                 buf_resp_s;
+
+    always_ff @(posedge clk or negedge rstn) begin : STORE
+        if (!rstn) begin
+            wdata_s <= 'b0;
+            rdata_s <= 'b0;
+            wd_buffer_wen_s <= 'b0;
+            rd_buffer_ren_s <= 'b0;
+            hready_s <= 'b0;
+            reg_resp_s <= 'b0;
+            buf_resp_s <= 'b0;
+        end
+        else begin
+            wdata_s <= wdata;
+            rdata_s <= rdata;
+            wd_buffer_wen_s <= wd_buffer_wen;
+            rd_buffer_ren_s <= rd_buffer_ren;
+            hready_s <= hready;
+            reg_resp_s <= reg_resp;
+            buf_resp_s <= buf_resp;
+        end
+    end
+
     assign tx_data      = wd_buffer_o[tx_cnt*8 +: 8];
     assign rx_ready     = is_scanf;
     assign hrdata       = rdata;
@@ -100,22 +129,46 @@ module ahb2uart (
         WADDR: begin
             if (haddr[30]) n_state = WREG;
             else if (!(|wd_buffer_full)) n_state = WRITE;
+            else n_state = WADDR;
             hready = haddr[30] | !(|wd_buffer_full);
+            wdata = wdata_s;
+            rdata = rdata_s;
+            wd_buffer_wen = wd_buffer_wen_s;
+            rd_buffer_ren = rd_buffer_ren_s;
+            reg_resp = reg_resp_s;
+            buf_resp = buf_resp_s;
         end
         RADDR: begin
             if (haddr[30]) n_state = RREG;
             else if (!(|rd_buffer_empty)) n_state = READ;
+            else n_state = RADDR;
             rd_buffer_ren = !haddr[30] && !(|rd_buffer_empty);
+            hready = hready_s;
+            wdata = wdata_s;
+            rdata = rdata_s;
+            wd_buffer_wen = wd_buffer_wen_s;
+            reg_resp = reg_resp_s;
+            buf_resp = buf_resp_s;
         end
         WREG: begin
             n_state = IDLE;
             reg_resp = 'b1;
             hready = 'b0;
+            buf_resp = buf_resp_s;
+            wdata = wdata_s;
+            rdata = rdata_s;
+            wd_buffer_wen = wd_buffer_wen_s;
+            rd_buffer_ren = rd_buffer_ren_s;
         end
         RREG: begin
             n_state = IDLE;
             rdata = {31'b0, is_scanf};
             hready = 'b1;
+            reg_resp = reg_resp_s;
+            buf_resp = buf_resp_s;
+            wdata = wdata_s;
+            wd_buffer_wen = wd_buffer_wen_s;
+            rd_buffer_ren = rd_buffer_ren_s;
         end
         WRITE: begin
             n_state = IDLE;
@@ -123,15 +176,29 @@ module ahb2uart (
             wd_buffer_wen = 'b1;
             buf_resp = 'b1;
             hready = 'b0;
+            reg_resp = reg_resp_s;
+            rd_buffer_ren = rd_buffer_ren_s;
+            rdata = rdata_s;
         end
         READ: begin
             n_state = IDLE;
             rdata = rd_buffer_o;
             rd_buffer_ren = 'b0;
             hready = 'b1;
+            reg_resp = reg_resp_s;
+            buf_resp = buf_resp_s;
+            wdata = wdata_s;
+            wd_buffer_wen = wd_buffer_wen_s;
         end
         default: begin
             n_state = IDLE;
+            rdata = rdata_s;
+            rd_buffer_ren = rd_buffer_ren_s;
+            hready = hready_s;
+            reg_resp = reg_resp_s;
+            buf_resp = buf_resp_s;
+            wdata = wdata_s;
+            wd_buffer_wen = wd_buffer_wen_s;
         end
         endcase
     end

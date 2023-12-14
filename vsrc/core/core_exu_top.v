@@ -156,11 +156,19 @@ module core_exu_top (
 				if(rx_bc_pc_ena) begin
 					exu_tx_bc_done	<=	1'b1;
 					exu_tx_bc_en	<=	exu_rx_opcode == `branch	?	exu_tx_exu_res_w[0]	:	1'b1;
+				`ifdef __LOG_ENABLE__
+					if(exu_rx_opcode == `branch)
+						$display("EXU: Branch result[%h<->%h = %h]", exu_rx_rs1, exu_rx_rs2, exu_tx_exu_res_w[0]);
+				`endif
 				end
 			S_TX_PEND:
 				if(tx_ena && rx_bc_pc_ena) begin
 					exu_tx_bc_done	<=	1'b1;
 					exu_tx_bc_en	<=	exu_rx_opcode == `branch	?	exu_tx_exu_res_w[0]	:	1'b1;
+				`ifdef __LOG_ENABLE__
+					if(exu_rx_opcode == `branch)
+						$display("EXU: Branch result[%h<->%h = %h]", exu_rx_rs1, exu_rx_rs2, exu_tx_exu_res_w[0]);
+				`endif
 				end
 				else if(tx_ena && !rx_bc_pc_ena) begin
 					exu_tx_bc_done	<=	1'b0;

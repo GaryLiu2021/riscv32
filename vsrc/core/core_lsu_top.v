@@ -95,7 +95,7 @@ module core_lsu_top(
 
 `ifdef __LOG_ENABLE__
 	always @(posedge clk) begin
-		if(rstn && lsu_req_vld) begin
+		if(rstn && lsu_req_vld && lsu_req_rdy) begin
 			if(lsu_req_wen) begin
 				$display("LSU: Sending memory write request to bus...");
 				$display("\tTarget address: 0x%h", lsu_req_addr);
@@ -104,7 +104,6 @@ module core_lsu_top(
 			else begin
 				$display("LSU: Sending memory read request to bus...");
 				$display("\tTarget address: 0x%h", lsu_req_addr);
-				$display("\tData fetched: %h", lsu_resp_rdata);
 			end
 		end
 	end
