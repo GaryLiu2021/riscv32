@@ -19,7 +19,7 @@ module ram_top (
 );
     
     // ram
-    wire [`AHB_ADDR_WIDTH-1:0]          address;
+    wire [`AHB_ADDR_WIDTH-1:0]          addr;
     wire                                rden;
     wire [`AHB_DATA_WIDTH-1:0]          q;
     wire                                wren;
@@ -29,7 +29,7 @@ module ram_top (
     ahb2ram ahb_ram_if (
         .clk(clk),
         .rstn(rstn),
-        .address(address),
+        .address(addr),
         .rden(rden),
         .q(q),
         .wren(wren),

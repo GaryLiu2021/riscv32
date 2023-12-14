@@ -38,6 +38,10 @@ module ahb_lite (
     wire                                sel_1;
     reg                                 sel_0_r;
     reg                                 sel_1_r;
+    
+    reg                                 sel_0_s;
+    reg                                 sel_1_s;
+    reg                                 grant_s;
 
     assign haddr_m2s = addr_channel;
     assign hwdata_m2s = wdata_channel;
@@ -99,10 +103,24 @@ module ahb_lite (
         end
     end
 
+    always_ff @(posedge clk or negedge rstn) begin : STORE
+        if (!rstn) begin
+            sel_0_s <= 'b0; 
+            sel_1_s <= 'b0; 
+            grant_s <= 'b0;
+        end
+        else begin
+            sel_0_s <= sel_0_r; 
+            sel_1_s <= sel_1_r;
+            grant_s <= hgrant; 
+        end
+    end
+
     always_comb begin : STATE_BEHAVIOR
         case (state)
         IDLE: begin
             if (hbusreq) n_state = ADDR;
+            else n_state = IDLE;
             sel_0_r = 'b0;
             sel_1_r = 'b0;
             hgrant = hbusreq;
@@ -111,34 +129,51 @@ module ahb_lite (
             if (hgrant) begin
                 if (haddr_ctrl && hwrite) n_state = WRITE;
                 else if (haddr_ctrl && !hwrite) n_state = READ;
+                else n_state = ADDR;
             end
             else n_state = IDLE;
             sel_0_r = sel_0;
             sel_1_r = sel_1;
+            hgrant = grant_s;
         end
         WRITE: begin
             if (!hgrant) n_state = FINISH;
             else n_state = WHOLD;
+            sel_0_r = sel_0_s;
+            sel_1_r = sel_1_s;
+            hgrant = grant_s;
         end
         READ: begin
             if (!hgrant) n_state = FINISH;
             else n_state = RHOLD;
+            sel_0_r = sel_0_s;
+            sel_1_r = sel_1_s;
+            hgrant = grant_s;
         end
         WHOLD: begin
             n_state = FINISH;
             hgrant = 'b0;
+            sel_0_r = sel_0_s;
+            sel_1_r = sel_1_s;
         end
         RHOLD: begin
             if (hready) n_state = FINISH;
+            else n_state = RHOLD;
             hgrant = 'b0;
+            sel_0_r = sel_0_s;
+            sel_1_r = sel_1_s;
         end
         FINISH: begin
             n_state = IDLE;
+            hgrant = 'b0;
             sel_0_r = 'b0;
             sel_1_r = 'b0;
         end
         default: begin
             n_state = IDLE;
+            hgrant = 'b0;
+            sel_0_r = 'b0;
+            sel_1_r = 'b0;
         end
         endcase
     end

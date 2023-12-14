@@ -119,7 +119,7 @@ module soc_top(
 	 */
 	assign	core_ifu_inst_vld	=	rom_tx_valid;
 	assign	core_ifu_inst		=	rom_tx_data;
-	assign	core_lsu_req_rdy	=	ahbm_lsu_rsp_rdy;
+	assign	core_lsu_req_rdy	=	ahbm_lsu_req_rdy;
 	assign	core_lsu_resp_vld	=	ahbm_lsu_rsp_vld;
 	assign	core_lsu_resp_rdata	=	ahbm_lsu_rsp_rdata;
 

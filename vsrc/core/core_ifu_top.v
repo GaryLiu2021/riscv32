@@ -107,10 +107,12 @@ module core_ifu_top(
 	 */
 	assign	lsu_tx_ready 	= 	s_pres == S_RX_PEND	? 	ifu_tx_ready :
 								s_pres == S_BC_PEND	?	1'b0 :
+								s_pres == S_FS_PEND ?	1'b1 :
 														ifu_tx_ready && fifo_tx_valid;
 
 	assign	fifo_tx_ready 	= 	s_pres == S_RX_PEND	? 	ifu_tx_ready :
 								s_pres == S_BC_PEND	?	1'b0 :
+								s_pres == S_FS_PEND ?	1'b1 :
 														ifu_tx_ready && lsu_tx_valid;
 
 	/*

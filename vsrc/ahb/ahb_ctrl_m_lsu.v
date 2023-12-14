@@ -10,7 +10,7 @@ module ahb_lsu_master(
 	input		[31:0]	ahbm_lsu_req_addr,
 	input		[31:0]	ahbm_lsu_req_wdata,
 
-	output				ahbm_lsu_rsp_vld,
+	output	reg			ahbm_lsu_rsp_vld,
 	input				ahbm_lsu_rsp_rdy,
 	output		[31:0]	ahbm_lsu_rsp_rdata,
 
@@ -18,7 +18,7 @@ module ahb_lsu_master(
 	output	reg	[31:0]	haddr_m2h,
 	output	reg			haddr_ctrl_m2h,
 	output	reg			hwrite_m2h,
-	output	reg			hwdata_m2h,
+	output	reg	[31:0]	hwdata_m2h,
 	output	reg			hbusreq_m2h,
 
 	input		[31:0]	hdata_s2m,
@@ -33,7 +33,8 @@ module ahb_lsu_master(
 				S_GRANT	=	1,
 				S_ADDR	=	2,
 				S_READ	=	3,
-				S_WRITE	=	4;
+				S_WRITE	=	4,
+				S_RESP	=	5;
 
 	reg	[2:0]	s_pres;
 	reg	[2:0]	s_next;
@@ -59,8 +60,9 @@ module ahb_lsu_master(
 				s_next	=	~hready_s2m			?	S_WRITE	:
 							ahbm_lsu_req_ena	?	S_GRANT	:	S_IDLE;
 			S_READ:
-				s_next	=	~hready_s2m			?	S_READ	:
-							ahbm_lsu_req_ena	?	S_GRANT	:	S_IDLE;
+				s_next	=	hready_s2m			?	S_RESP	:	S_READ;
+			S_RESP:
+				s_next	=	ahbm_lsu_req_ena	?	S_GRANT	:	S_IDLE;
 			default:
 				s_next	=	S_IDLE;
 		endcase
@@ -74,33 +76,42 @@ module ahb_lsu_master(
 			hwdata_m2h		<=	'd0;
 			hbusreq_m2h		<=	'd0;
 			ahb_req_rdy		<=	1'b1;
+			ahbm_lsu_rsp_vld<=	1'b0;
 		end
 		else case(s_next)
 			S_IDLE: begin
 				haddr_ctrl_m2h	<=	'd0;
 				hwrite_m2h		<=	'd0;
 				hbusreq_m2h		<=	'd0;
+				ahbm_lsu_rsp_vld<=	1'b0;
 			end
 			S_GRANT: begin
-				ahb_req_rdy		<=	1'b0;
-				haddr_m2h		<=	{ahbm_lsu_req_addr[31:30], ahbm_lsu_req_rwtyp, ahbm_lsu_req_addr[26:0]};
-				hwrite_m2h		<=	ahbm_lsu_req_wen;
-				hwdata_m2h		<=	ahbm_lsu_req_wdata;
-				hbusreq_m2h		<=	1'b1;
+				if(s_pres != S_GRANT) begin
+					ahb_req_rdy	<=	1'b0;
+					haddr_m2h	<=	{ahbm_lsu_req_addr[31:30], ahbm_lsu_req_rwtyp, ahbm_lsu_req_addr[26:0]};
+					hwrite_m2h	<=	ahbm_lsu_req_wen;
+					hwdata_m2h	<=	ahbm_lsu_req_wdata;
+					hbusreq_m2h	<=	1'b1;
+				end
+				ahbm_lsu_rsp_vld<=	1'b0;
 			end
 			S_ADDR:	begin
 				haddr_ctrl_m2h	<=	1'b1;
 			end
 			S_WRITE: begin
+				haddr_ctrl_m2h	<=	1'b0;
 				ahb_req_rdy		<=	1'b1;
 			end
 			S_READ: begin
+				haddr_ctrl_m2h	<=	1'b0;
+			end
+			S_RESP: begin
 				ahb_req_rdy		<=	1'b1;
+				ahbm_lsu_rsp_vld<=	1'b1;
 			end
 		endcase
 	end
 
-	assign	ahbm_lsu_rsp_vld	=	hready_s2m;
 	assign	ahbm_lsu_rsp_rdata	=	hdata_s2m;
 	assign	ahbm_lsu_req_rdy	=	ahbm_lsu_rsp_rdy && ahb_req_rdy;
 

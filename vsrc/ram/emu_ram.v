@@ -29,7 +29,7 @@ always@(*)
 	end
 
 MyRAM u_MyRAM(
-	.address(addr[15:0]),
+	.address(addr[17:2]),
 	.byteena(byteena),
 	.clock(clk),
 	.data(data),
@@ -83,7 +83,7 @@ always@(posedge clock)
 				default:ram[address]<=data;
 			endcase
 			`ifdef __LOG_ENABLE__
-				$display("RAM: [0x%8h] writing, data: %h", address, q);
+				$display("RAM: [0x%8h] writing, data: %h", address, data);
 			`endif
 		end
 		else;

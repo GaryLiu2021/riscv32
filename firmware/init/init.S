@@ -3,12 +3,12 @@
 _start:
 			li	ra,0
 			li	sp,0x80200000
-			li	gp,0x80200000
+			li	gp,0
 			li	tp,0
 			li	t0,0
 			li	t1,0
 			li	t2,0
-			li	s0,0
+			li	s0,0x80200000
 			li	s1,0
 			li	a0,0
 			li	a1,0
