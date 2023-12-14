@@ -5,27 +5,26 @@ module core_ifu_top(
 	input					clk,
 	input					rstn,
 
-	// Interface with Regfile
+	// PCR to IFU
 	input					ifu_rx_valid,
+	input		[31:0]		ifu_rx_pc,
 	output					ifu_rx_ready,
 
-	input		[31:0]		ifu_rx_pc,
-
-	// Interface with IDU
+	// IFU to IDU
 	output					ifu_tx_valid,
-	input					ifu_tx_ready,
-
 	output		[31:0]		ifu_tx_pc,
 	output		[31:0]		ifu_tx_inst,
+	input					ifu_tx_ready,
 	
-	// Interface to access icache
-	// Todo: AHB Master Controller
+	// IFU to BUS
 	output					bus_req_valid,
 	output		[31:0]		bus_req_addr,
 
+	// BUS to IFU
 	input					bus_rsp_valid,
 	input		[31:0]		bus_rsp_data,
 
+	// EXU to IFU
 	input					ifu_rx_bc_done,
 	input					ifu_rx_bc_en
 );
@@ -78,56 +77,10 @@ module core_ifu_top(
 		.fifo_rx_ready           ( fifo_rx_ready   ),
 		.fifo_tx_valid           ( fifo_tx_valid   )
 	);
-	
-	assign lsu_rx_addr = ifu_rx_pc;
-	assign fifo_rx_data = ifu_rx_pc;
-
-	/*
-	 * Only when lsu and fifo are both ready, shoule ifu recv new pc.
-	 */
-	assign ifu_rx_ready = lsu_rx_ready && fifo_rx_ready && s_pres != S_BC_PEND && ifu_tx_ready;
-
-	/*
-	 * One's recv data is not valid if:
-	 	1.	pcr is not valid
-		2.	one peer is not ready
-	 */
-	assign lsu_rx_valid = ifu_tx_ready && s_pres != S_BC_PEND && ifu_rx_valid && fifo_rx_ready;	// If ifu tx ready is low, tell submodule to not recv
-	assign fifo_rx_valid = ifu_tx_ready && s_pres != S_BC_PEND && ifu_rx_valid && lsu_rx_ready;
-	
-	/*
-	 * Update lsu and fifo control signals
-
-	 * When present status is S_BC_PEND, the pipeline is stalled.
-	 * For lsu and fifo:
-	 * One is stalled if:
-		1. idu is not ready
-		2. present state is S_BC_PEND
-		3. one of other peers is not valid
-	 */
-	assign	lsu_tx_ready 	= 	s_pres == S_RX_PEND	? 	ifu_tx_ready :
-								s_pres == S_BC_PEND	?	1'b0 :
-								s_pres == S_FS_PEND ?	1'b1 :
-														ifu_tx_ready && fifo_tx_valid;
-
-	assign	fifo_tx_ready 	= 	s_pres == S_RX_PEND	? 	ifu_tx_ready :
-								s_pres == S_BC_PEND	?	1'b0 :
-								s_pres == S_FS_PEND ?	1'b1 :
-														ifu_tx_ready && lsu_tx_valid;
-
-	/*
-	 * Only when lsu and fifo are both valid, should ifu pass new inst and pc.
-	 * Tx data is valid when:
-	 	1.	lsu and fifo are both valid
-		2.	Present state is S_TX_PEND
-	 */
-	assign ifu_tx_valid = s_pres == S_TX_PEND ?	lsu_tx_valid && fifo_tx_valid :
-												1'b0;
-	assign ifu_tx_inst = lsu_tx_inst;
-	assign ifu_tx_pc = fifo_tx_data;
 
 	/* 
-	 * predecode module
+	 *	MODULE:	core_ifu_pre_dec
+	 *	  ROLE:	predecode the instruction and judge to stall the pipeline or not
 	 */
 	wire  [6:0]  pre_dec_opcode;
 
@@ -136,7 +89,6 @@ module core_ifu_top(
 
 		.pre_dec_opcode          ( pre_dec_opcode    )
 	);
-
 
 	/*
 	 * State Control
@@ -254,107 +206,63 @@ module core_ifu_top(
 					fs_counter <= fs_counter + 1;
 				if(rx_ena)
 					rx_counter <= rx_counter + 1;
+			`ifdef __LOG_ENABLE__
 				$display("IFU: Flushing...");
+			`endif
 			end
 		endcase
 	end
+	
+
+	/*
+	 * Assignments
+	 */
+	assign lsu_rx_addr = ifu_rx_pc;
+	assign fifo_rx_data = ifu_rx_pc;
+
+	/*
+	 * Only when lsu and fifo are both ready, shoule ifu recv new pc.
+	 */
+	assign ifu_rx_ready = lsu_rx_ready && fifo_rx_ready && s_pres != S_BC_PEND && ifu_tx_ready;
+
+	/*
+	 * One's recv data is not valid if:
+	 	1.	pcr is not valid
+		2.	one peer is not ready
+	 */
+	assign lsu_rx_valid = ifu_tx_ready && s_pres != S_BC_PEND && ifu_rx_valid && fifo_rx_ready;	// If ifu tx ready is low, tell submodule to not recv
+	assign fifo_rx_valid = ifu_tx_ready && s_pres != S_BC_PEND && ifu_rx_valid && lsu_rx_ready;
+	
+	/*
+	 * Update lsu and fifo control signals
+
+	 * When present status is S_BC_PEND, the pipeline is stalled.
+	 * For lsu and fifo:
+	 * One is stalled if:
+		1. idu is not ready
+		2. present state is S_BC_PEND
+		3. one of other peers is not valid
+	 */
+	assign	lsu_tx_ready 	= 	s_pres == S_RX_PEND	? 	ifu_tx_ready :
+								s_pres == S_BC_PEND	?	1'b0 :
+								s_pres == S_FS_PEND ?	1'b1 :
+														ifu_tx_ready && fifo_tx_valid;
+
+	assign	fifo_tx_ready 	= 	s_pres == S_RX_PEND	? 	ifu_tx_ready :
+								s_pres == S_BC_PEND	?	1'b0 :
+								s_pres == S_FS_PEND ?	1'b1 :
+														ifu_tx_ready && lsu_tx_valid;
+
+	/*
+	 * Only when lsu and fifo are both valid, should ifu pass new inst and pc.
+	 * Tx data is valid when:
+	 	1.	lsu and fifo are both valid
+		2.	Present state is S_TX_PEND
+	 */
+	assign ifu_tx_valid = s_pres == S_TX_PEND ?	lsu_tx_valid && fifo_tx_valid :
+												1'b0;
+	assign ifu_tx_inst = lsu_tx_inst;
+	assign ifu_tx_pc = fifo_tx_data;
 
 	
 endmodule
-
-`ifdef	__TEST_FOR_INSTS__
-
-module test;
-
-	// core_ifu_top Inputs
-	reg   clk = 0;
-	reg   rstn = 0;
-	reg   ifu_rx_valid = 0;
-	reg   [31:0]  ifu_rx_pc;
-	reg   ifu_tx_ready = 1;
-	reg   bus_rsp_valid;
-	reg   [31:0]  bus_rsp_data;
-	reg   ifu_rx_bc_done = 1;
-	reg   ifu_rx_bc_en = 0;
-
-	always #(10) clk = ~clk;
-
-	// core_ifu_top Outputs
-	wire  ifu_rx_ready;
-	wire  ifu_tx_valid;
-	wire  [31:0]  ifu_tx_pc;
-	wire  [31:0]  ifu_tx_inst;
-	wire  bus_req_valid;
-	wire  [31:0]  bus_req_addr;
-
-	core_ifu_top  u_core_ifu_top (
-		.clk                     ( clk                ),
-		.rstn                    ( rstn               ),
-		.ifu_rx_valid            ( ifu_rx_valid       ),
-		.ifu_rx_pc               ( ifu_rx_pc          ),
-		.ifu_tx_ready            ( ifu_tx_ready       ),
-		.bus_rsp_valid           ( bus_rsp_valid      ),
-		.bus_rsp_data            ( bus_rsp_data       ),
-		.ifu_rx_bc_done          ( ifu_rx_bc_done     ),
-		.ifu_rx_bc_en            ( ifu_rx_bc_en       ),
-
-		.ifu_rx_ready            ( ifu_rx_ready       ),
-		.ifu_tx_valid            ( ifu_tx_valid       ),
-		.ifu_tx_pc               ( ifu_tx_pc          ),
-		.ifu_tx_inst             ( ifu_tx_inst        ),
-		.bus_req_valid           ( bus_req_valid      ),
-		.bus_req_addr            ( bus_req_addr       )
-	);
-
-	task readpc;
-		input	[31:0]	pc;
-		begin
-			@(posedge clk) begin
-				ifu_rx_valid <= 1;
-				ifu_rx_pc <= pc;
-			end
-		end
-	endtask
-
-	task pcr_stall;
-		input	[31:0]	cycle;
-		repeat(cycle) begin
-			@(posedge clk) begin
-				ifu_rx_valid <= 0;
-			end
-		end
-	endtask
-
-	task idu_stall;
-		begin
-			ifu_tx_ready <= 0;
-		end
-	endtask
-
-	initial begin
-		#(40) rstn = 1;
-		readpc(32'd0);
-		readpc(32'd1);
-		pcr_stall(1);
-		readpc(2);
-		readpc(3);
-		readpc(4);
-		readpc(5);
-		readpc(6);
-		readpc(7);
-		readpc(5);
-		readpc(2);
-		readpc(3);
-		readpc(4);
-		pcr_stall(5);
-		$finish;
-	end
-
-	initial begin
-		$dumpfile("waveform.vcd");
-		$dumpvars(0, test);
-	end
-
-endmodule
-
-`endif
