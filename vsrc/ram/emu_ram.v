@@ -118,6 +118,7 @@ always@(posedge clock)
 			`endif
 		end
 		else;
+		$display("0x801fffac: %h", ram[16'h3feb]);
 	end
 
 endmodule
