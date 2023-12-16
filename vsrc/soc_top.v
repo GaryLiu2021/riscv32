@@ -66,7 +66,7 @@ module soc_top(
 	 */
 	wire	ahbm_lsu_req_vld;
 	wire	ahbm_lsu_req_wen;
-	wire	ahbm_lsu_req_rwtyp;
+	wire	[2:0]	ahbm_lsu_req_rwtyp;
 	wire	[31:0]	ahbm_lsu_req_addr;
 	wire	[31:0]	ahbm_lsu_req_wdata;
 	wire	ahbm_lsu_rsp_rdy;

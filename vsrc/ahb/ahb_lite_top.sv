@@ -9,7 +9,7 @@ module ahb_lite_top (
 // LSU TO MASTER
 	input								ahbm_lsu_req_vld,
 	input								ahbm_lsu_req_wen,
-	input								ahbm_lsu_req_rwtyp,
+	input	[2:0]						ahbm_lsu_req_rwtyp,
 	input	[31:0]						ahbm_lsu_req_addr,
 	input	[31:0]						ahbm_lsu_req_wdata,
 	input								ahbm_lsu_rsp_rdy,
