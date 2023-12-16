@@ -121,7 +121,8 @@ module ahb2ram (
             wdata = hwdata;
             wen = 'b1;
             hready = 'b0;
-            addr = haddr;
+            //addr = haddr;
+            addr = addr_s;
             ren = ren_s;
             rdata = rdata_s;
         end

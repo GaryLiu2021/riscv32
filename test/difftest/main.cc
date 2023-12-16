@@ -40,7 +40,6 @@ CPU_state ref_state;
 
 //! VERILATOR ENVIRONMENT
 
-const char* img_file = "/home/sgap/projects/riscv32/test/case/mult/mult.bin";
 const char* lib_file = "/home/sgap/ysyx-workbench/nemu/tools/spike-diff/build/riscv32-spike-so";
 uint64_t cycles = 0;
 uint64_t times = 0;
@@ -126,14 +125,14 @@ enum { DIFFTEST_TO_DUT, DIFFTEST_TO_REF };
 
 long load_img(char* program) {
     std::string program_str(program);
-    std::string program_file = "/home/sgap/projects/riscv32/test/case/" + program_str + "/" + program_str + ".bin";
+    std::string program_file = "/home/sgap/projects/riscv32/software/case/" + program_str + "/build/" + program_str + ".bin";
     FILE* fp = fopen(program_file.c_str(), "rb");
     assert(fp);
 
     fseek(fp, 0, SEEK_END);
     long size = ftell(fp);
 
-    printf("The image is %s, size = %ld\n", img_file, size);
+    printf("The image is %s, size = %ld\n", program_file.c_str(), size);
 
     fseek(fp, 0, SEEK_SET);
     int ret = fread(guest_to_host(RESET_VECTOR), size, 1, fp);
@@ -285,7 +284,7 @@ int main(int argc, char** argv, char** env) {
 
         //! Due to restriction, hardware memory[0] refer to pmem[0x80000000] here
         *(dut_mem + (i + RESET_VECTOR - CONFIG_MBASE) / 4) = value;
-        printf("0x%08x <= %08x\n", (i + RESET_VECTOR), *(dut_mem + (i + RESET_VECTOR - CONFIG_MBASE) / 4));
+        // printf("0x%08x <= %08x\n", (i + RESET_VECTOR), *(dut_mem + (i + RESET_VECTOR - CONFIG_MBASE) / 4));
     }
 
     m_dut->clk = 1;
@@ -298,11 +297,11 @@ int main(int argc, char** argv, char** env) {
     m_tracep->dump(times++);
 
     dut_state_dump();
-    init_difftest(lib_file, img_size, 1234);
+    // init_difftest(lib_file, img_size, 1234);
 
-    while (!finish && cycles < 1000) {
+    while (!finish && cycles < 10000) {
         printf("\nCYCLE %ld\n", cycles);
-        print_dut_pc();
+        // print_dut_pc();
         // print_dut_inst();
         print_dut_gpr();
 

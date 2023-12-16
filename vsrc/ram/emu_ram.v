@@ -21,9 +21,11 @@ reg [3:0]byteena;
 always@(*)
 	begin
 		case(rwtyp)
-			000:byteena=4'b0001;
-			001:byteena=4'b0011;
-			010:byteena=4'b1111;
+			3'b000:byteena=(4'b0001)<<(addr[1:0]);
+			3'b001:byteena=(4'b0011)<<(addr[1:0]);
+			3'b010:byteena=4'b1111;
+			3'b100:byteena=(4'b0001)<<(addr[1:0]);
+			3'b101:byteena=(4'b0011)<<(addr[1:0]);
 			default:byteena=4'b1111;
 		endcase
 	end
@@ -51,17 +53,26 @@ module MyRAM(
 	 output reg [31:0]q
 );
 
-reg [31:0]ram [65535:0];
+reg [31:0] ram [65535:0];
+reg [31:0] sel;
+integer i;
+always @(*) begin
+	for(i=0;i<4;i=i+1) begin
+		sel[i*8 +: 8] = {8{byteena[i]}};
+	end
+end
+
+wire [31:0] qw = ram[address] & sel;
 
 always@(posedge clock)
 	begin
 		if(rden)
 			begin
 				case(byteena)
-					4'b0001:q<={24'd0,ram[address][7:0]};
-					4'b0011:q<={16'd0,ram[address][15:0]};
-					4'b1111:q<=ram[address];
-					default:q<=ram[address];
+					4'b1111,4'b1101,4'b1011,4'b0111,4'b1001,4'b0101,4'b0011,4'b0001: q <= qw;
+					4'b1110,4'b1010,4'b0110,4'b0010: q <= qw >> 8;
+					4'b1100,4'b0100:	q <= qw >> 16;
+					4'b1000:	q <= qw >> 24;
 				endcase
 		`ifdef __LOG_ENABLE__
 			$display("RAM: [0x%8h] reading...", address);
@@ -87,6 +98,7 @@ always@(posedge clock)
 			`endif
 		end
 		else;
+		$display("0x801fffac: %h", ram[16'h3feb]);
 	end
 
 endmodule

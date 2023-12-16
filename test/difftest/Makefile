@@ -1,7 +1,7 @@
 # Init directory
 WAVE_DIR=./wave
 VSRC_DIR=../../vsrc
-CASE_DIR = ../case
+CASE_DIR = ../../software/case
 VINC_DIR = ../../vsrc/include
 
 # Verilator flags
@@ -46,7 +46,7 @@ all: $(CASES)
 
 $(CASES): lib
 	@echo "Compiling test case $@..."
-	@$(MAKE) -C $(CASE_DIR)/$@ -f $@.mk
+	@$(MAKE) -C $(CASE_DIR)/$@
 
 	@echo "Simulating test case $@..."
 	verilator $(VERILATOR_FLAGS) $(VERILOG_VSRCS) $(VERILATOR_CSRCS) $(VERILATOR_CFLAGS)
