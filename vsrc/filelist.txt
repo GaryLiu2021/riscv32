@@ -2,7 +2,7 @@
 ./uart/uart_rx.sv
 ./uart/uart_tx.sv
 ./uart/uart_top.sv
-./utils/const_defines.svh
+./utils/const_defines.v
 ./utils/dummy_memory.v
 ./utils/dpi_verilator.v
 ./utils/util_sync_fifo.v

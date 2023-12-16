@@ -1,4 +1,4 @@
-`include "const_defines.svh"
+`include "const_defines.v"
 module tb_ahb_top;
 
     localparam CLK_PERIOD = 1000 / `CLK_FRE; // ns

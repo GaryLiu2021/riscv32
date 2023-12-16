@@ -1,4 +1,4 @@
-`include "const_defines.svh"
+`include "const_defines.v"
 module tb_ram_top;
 
     parameter CLK_PERIOD = 10;     // 时钟周期，单位：ns

@@ -1,4 +1,4 @@
-`include "const_defines.svh"
+`include "const_defines.v"
 
 module tb_uart_top;
 

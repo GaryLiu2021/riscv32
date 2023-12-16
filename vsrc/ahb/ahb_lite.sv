@@ -1,4 +1,4 @@
-`include "const_defines.svh"
+`include "const_defines.v"
 
 module ahb_lite (
 // GLOBAL

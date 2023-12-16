@@ -1,4 +1,4 @@
-`include "const_defines.svh"
+`include "const_defines.v"
 
 module addr_decoder (
     input [`AHB_ADDR_WIDTH - 1:0]   addr,
