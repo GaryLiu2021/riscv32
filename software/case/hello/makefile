@@ -4,7 +4,7 @@ BUILD_DIR := ./build
 
 GNU = riscv32-unknown-elf
 CC = $(GNU)-gcc
-CFLAGS = -Wall -march=rv32i -mabi=ilp32 -nostartfiles $(INC)
+CFLAGS = -Wall -march=rv32i -mabi=ilp32 -nostartfiles $(INC) -O0
 
 LD = $(GNU)-ld
 LD_SC = link.ld
@@ -21,7 +21,7 @@ CPFLAGS = -O binary
 
 OBJS := $(patsubst %.c,%.o,$(wildcard *.c))
 
-all: $(NAME).elf $(NAME).dump $(NAME).bin $(OBJS)
+all: $(NAME).elf $(NAME).dump $(NAME).bin $(NAME).hex $(OBJS)
 	mkdir -p $(BUILD_DIR)
 	mv $^ $(BUILD_DIR)
 
@@ -30,6 +30,9 @@ all: $(NAME).elf $(NAME).dump $(NAME).bin $(OBJS)
 
 %.dump: %.elf
 	$(DP) $(DPFLAGS) $< > $@
+
+%.hex: %.bin
+	python3 proc.py > hello.hex
 
 %.bin: %.elf
 	$(CP) $(CPFLAGS) $< $@

@@ -16,4 +16,4 @@
 // ram
 `define     RAM_DEPTH           65536
     //实际上该是65536
-`define     RX_END              0
+`define     RX_END              8'h00

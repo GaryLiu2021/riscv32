@@ -130,55 +130,6 @@ module core_exu_top (
 	);
 
 	/*
-	 * PC Adder
-	 ! Modifying PC REG
-	 */
-	
-	wire	rx_bc_pc_ena	=	rx_ena && (exu_rx_opcode == `jal || exu_rx_opcode == `jalr || exu_rx_opcode == `branch);
-	always @(posedge clk or negedge rstn) begin
-		if(!rstn)
-			exu_tx_bc_pc <= `zero_word;
-		else case(s_pres)
-			S_RX_PEND:
-				if(rx_bc_pc_ena)
-					exu_tx_bc_pc <= exu_rx_opcode == `jalr ? (exu_rx_rs1 + exu_rx_imme) & (~32'b1) : exu_rx_pc + exu_rx_imme;
-			S_TX_PEND:
-				if(tx_ena && rx_bc_pc_ena)
-					exu_tx_bc_pc <= exu_rx_opcode == `jalr ? (exu_rx_rs1 + exu_rx_imme) & (~32'b1) : exu_rx_pc + exu_rx_imme;
-		endcase
-	end
-
-	always @(posedge clk or negedge rstn) begin
-		if(!rstn)
-			exu_tx_bc_done <= 1'b0;
-		else case(s_pres)
-			S_RX_PEND:
-				if(rx_bc_pc_ena) begin
-					exu_tx_bc_done	<=	1'b1;
-					exu_tx_bc_en	<=	exu_rx_opcode == `branch	?	exu_tx_exu_res_w[0]	:	1'b1;
-				`ifdef __LOG_ENABLE__
-					if(exu_rx_opcode == `branch)
-						$display("EXU: Branch result[%h<->%h = %h]", exu_rx_rs1, exu_rx_rs2, exu_tx_exu_res_w[0]);
-				`endif
-				end
-			S_TX_PEND:
-				if(tx_ena && rx_bc_pc_ena) begin
-					exu_tx_bc_done	<=	1'b1;
-					exu_tx_bc_en	<=	exu_rx_opcode == `branch	?	exu_tx_exu_res_w[0]	:	1'b1;
-				`ifdef __LOG_ENABLE__
-					if(exu_rx_opcode == `branch)
-						$display("EXU: Branch result[%h<->%h = %h]", exu_rx_rs1, exu_rx_rs2, exu_tx_exu_res_w[0]);
-				`endif
-				end
-				else if(tx_ena && !rx_bc_pc_ena) begin
-					exu_tx_bc_done	<=	1'b0;
-					exu_tx_bc_en	<=	1'b0;
-				end
-		endcase
-	end
-
-
-	/*
 	 * Logical Operation
 	 */
 
@@ -233,6 +184,54 @@ module core_exu_top (
 			logic_enable: 		exu_tx_exu_res_w = logic_data_out;
 			shift_enable: 		exu_tx_exu_res_w = shift_data_out;
 			default:			exu_tx_exu_res_w = `zero_word;
+		endcase
+	end
+
+	/*
+	 * PC Adder
+	 ! Modifying PC REG
+	 */
+	
+	wire	rx_bc_pc_ena	=	rx_ena && (exu_rx_opcode == `jal || exu_rx_opcode == `jalr || exu_rx_opcode == `branch);
+	always @(posedge clk or negedge rstn) begin
+		if(!rstn)
+			exu_tx_bc_pc <= `zero_word;
+		else case(s_pres)
+			S_RX_PEND:
+				if(rx_bc_pc_ena)
+					exu_tx_bc_pc <= exu_rx_opcode == `jalr ? (exu_rx_rs1 + exu_rx_imme) & (~32'b1) : exu_rx_pc + exu_rx_imme;
+			S_TX_PEND:
+				if(tx_ena && rx_bc_pc_ena)
+					exu_tx_bc_pc <= exu_rx_opcode == `jalr ? (exu_rx_rs1 + exu_rx_imme) & (~32'b1) : exu_rx_pc + exu_rx_imme;
+		endcase
+	end
+
+	always @(posedge clk or negedge rstn) begin
+		if(!rstn)
+			exu_tx_bc_done <= 1'b0;
+		else case(s_pres)
+			S_RX_PEND:
+				if(rx_bc_pc_ena) begin
+					exu_tx_bc_done	<=	1'b1;
+					exu_tx_bc_en	<=	exu_rx_opcode == `branch	?	exu_tx_exu_res_w[0]	:	1'b1;
+				`ifdef __LOG_ENABLE__
+					if(exu_rx_opcode == `branch)
+						$display("EXU: Branch result[%h<->%h = %h]", exu_rx_rs1, exu_rx_rs2, exu_tx_exu_res_w[0]);
+				`endif
+				end
+			S_TX_PEND:
+				if(tx_ena && rx_bc_pc_ena) begin
+					exu_tx_bc_done	<=	1'b1;
+					exu_tx_bc_en	<=	exu_rx_opcode == `branch	?	exu_tx_exu_res_w[0]	:	1'b1;
+				`ifdef __LOG_ENABLE__
+					if(exu_rx_opcode == `branch)
+						$display("EXU: Branch result[%h<->%h = %h]", exu_rx_rs1, exu_rx_rs2, exu_tx_exu_res_w[0]);
+				`endif
+				end
+				else if(tx_ena && !rx_bc_pc_ena) begin
+					exu_tx_bc_done	<=	1'b0;
+					exu_tx_bc_en	<=	1'b0;
+				end
 		endcase
 	end
 

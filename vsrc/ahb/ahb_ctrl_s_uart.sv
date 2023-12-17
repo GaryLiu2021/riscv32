@@ -315,36 +315,41 @@ module ahb2uart (
         end
     end
 
-    for (genvar i = 0; i < 4; i++) begin : READ_DATA_BUFFER
-        fifo #(
-            .DATA_WIDTH     (8),
-            .DATA_DEPTH     (8)
-        ) rd_buffer_bank (
-            .clk            (clk),
-            .rstn           (rstn),
-            .data_in        (rd_buffer_i[i*8 +: 8]),
-            .rd_en          (rd_buffer_ren),
-            .wr_en          (rd_buffer_wen[i]),
-            .data_out       (rd_buffer_o[i*8 +: 8]),
-            .full           (rd_buffer_full[i]),
-            .empty          (rd_buffer_empty[i])
-        );
-    end
+    genvar i;
+    generate
+        for (i = 0; i < 4; i++) begin : READ_DATA_BUFFER
+            fifo #(
+                .DATA_WIDTH     (8),
+                .DATA_DEPTH     (8)
+            ) rd_buffer_bank (
+                .clk            (clk),
+                .rstn           (rstn),
+                .data_in        (rd_buffer_i[i*8 +: 8]),
+                .rd_en          (rd_buffer_ren),
+                .wr_en          (rd_buffer_wen[i]),
+                .data_out       (rd_buffer_o[i*8 +: 8]),
+                .full           (rd_buffer_full[i]),
+                .empty          (rd_buffer_empty[i])
+            );
+        end
+    endgenerate
 
-    for (genvar i = 0; i < 4; i++) begin : WRITE_DATA_BUFFER
-        fifo #(
-            .DATA_WIDTH     (8),
-            .DATA_DEPTH     (8)
-        ) wd_buffer_bank (
-            .clk            (clk),
-            .rstn           (rstn),
-            .data_in        (wd_buffer_i[i*8 +: 8]),
-            .rd_en          (wd_buffer_ren[i]),
-            .wr_en          (wd_buffer_wen),
-            .data_out       (wd_buffer_o[i*8 +: 8]),
-            .full           (wd_buffer_full[i]),
-            .empty          (wd_buffer_empty[i])
-        );
-    end
+    generate
+        for (i = 0; i < 4; i++) begin : WRITE_DATA_BUFFER
+            fifo #(
+                .DATA_WIDTH     (8),
+                .DATA_DEPTH     (8)
+            ) wd_buffer_bank (
+                .clk            (clk),
+                .rstn           (rstn),
+                .data_in        (wd_buffer_i[i*8 +: 8]),
+                .rd_en          (wd_buffer_ren[i]),
+                .wr_en          (wd_buffer_wen),
+                .data_out       (wd_buffer_o[i*8 +: 8]),
+                .full           (wd_buffer_full[i]),
+                .empty          (wd_buffer_empty[i])
+            );
+        end
+    endgenerate
 
 endmodule

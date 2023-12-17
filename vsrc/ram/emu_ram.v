@@ -29,7 +29,7 @@ always@(*)
 		endcase
 	end
 
-wire	[31:0]	datain	=	data << (addr[1:0] << 3);
+wire	[31:0]	datain	=	data << ({3'd0, addr[1:0]} << 3);
 
 wire	[3:0]	entry	=	{rwtyp[1:0], addr[1:0]};
 reg		[3:0]	req_table;
@@ -114,12 +114,20 @@ always@(posedge clock)
 		if(wren) begin
 			ram[address]	<=	(data & sel) | (ram[address] & ~sel);
 			`ifdef __LOG_ENABLE__
-				$display("RAM: [0x%8h] writing...\nRAM: byteena = %b", address, byteena);
+				$display("RAM: [0x%8h] writing...\nRAM: data = %h", address, (data & sel) | (ram[address] & ~sel));
 			`endif
 		end
 		else;
-		$display("0x801fffac: %h", ram[16'h3feb]);
 	end
+
+`ifdef __VERILATOR__
+
+	import "DPI-C" function void set_ptr_ram(input logic [31:0] ram []);
+	initial begin
+		set_ptr_ram(ram);
+	end
+
+`endif
 
 endmodule
 	

@@ -43,7 +43,7 @@ int scanf(char* rx_array, int max_len) {
             if (rx_buffer_ready)
                 break;
         }
-
+        // print("Rx buffer is ready...", 22);
         /*
          * Load 4 bytes from UART_RX_BUF
          */
@@ -54,67 +54,62 @@ int scanf(char* rx_array, int max_len) {
          * if recved a '\0', finish the scanf process.
          */
         for (j = 0;(i + j) < max_len && j < 4;j++) {
-            char rxchar = *(char*)(&rx_str);
+            char rxchar = *((char*)(&rx_str) + 3 - j);
+            *(rx_array + i + j) = rxchar;
+            length++;
             if (rxchar == '\0')
                 return length;
-            *(rx_array + i + j) = rxchar;
-            rx_str <<= 8;
-            length++;
         }
     }
     return length;
 }
 
-// int _read(int fd, char* ptr, int len) {
-//     int count = len / 4;
-//     int remain = len - count * 4;
-//     int i = 0;
-//     for (int it = 0; it < count; it++) {
-//         int data = *(int*)UART_DATA_ADDR;
-//         char byte1 = (data >> 24) & 0xFF;
-//         char byte2 = (data >> 16) & 0xFF;
-//         char byte3 = (data >> 8) & 0xFF;
-//         char byte4 = data & 0xFF;
-//         ptr[i] = byte1;
-//         ptr[i + 1] = byte2;
-//         ptr[i + 2] = byte3;
-//         ptr[i + 3] = byte4;
-//         i += 4;
-//     }
-//     if (remain != 0) {
-//         int data = *(int*)UART_DATA_ADDR;
-//         int shift = 32;
-//         for (int it = 0; it < remain; it++) {
-//             shift -= 8;
-//             ptr[i] = (data >> shift) & 0xFF;
-//             i++;
-//         }
-//     }
-//     ptr[i] = 0;
-//     i++;
-//     return i;
-// }
+int strcmp(char* str1, char* str2, int len1, int len2) {
+    int i = 0;
+    while (i < len1 || i < len2) {
+        if (str1[i] != str2[i]) {
+            return str1[i] - str2[i];
+        }
+        i++;
+    }
+    return 0;
+}
 
-// int _write(int fd, char* ptr, int len) {
-//     int count = len / 4;
-//     int remain = len - count * 4;
-//     int i = 0;
-//     for (int it = 0; it < count; it++) {
-//         char byte1 = ptr[i];
-//         char byte2 = ptr[i + 1];
-//         char byte3 = ptr[i + 2];
-//         char byte4 = ptr[i + 3];
-//         int data = (byte1 << 24) | (byte2 << 16) | (byte3 << 8) | byte4;
-//         *(int*)UART_DATA_ADDR = data;
-//         i += 4;
-//     }
-//     if (remain != 0) {
-//         char byte1 = ptr[i++];
-//         char byte2 = i < len ? ptr[i++] : 0;
-//         char byte3 = i < len ? ptr[i++] : 0;
-//         char byte4 = 0;
-//         int data = (byte1 << 24) | (byte2 << 16) | (byte3 << 8) | byte4;
-//         *(int*)UART_DATA_ADDR = data;
-//     }
-//     return i;
-// }
+
+int int_to_ascii(int number, char* buffer) {
+    int i = 0;
+    // int is_negative = 0;
+
+    // if (number < 0) {
+    //     is_negative = 1;
+    //     number = -number;
+    // }
+    do {
+        int hex_bit = number & 0xf;
+        if (hex_bit <= 9) {
+            buffer[i++] = '0' + hex_bit;
+        }
+        else {
+            buffer[i++] = 'a' + hex_bit - 0xa;
+        }
+        number >>= 4;
+    } while (number != 0);
+
+    // // 若为负数，加上负号
+    // if (is_negative) {
+    //     buffer[i++] = '-';
+    // }
+
+    // reverse
+    int start = 0;
+    int end = i - 1;
+    while (start < end) {
+        char temp = buffer[start];
+        buffer[start] = buffer[end];
+        buffer[end] = temp;
+        start++;
+        end--;
+    }
+    buffer[i] = '\0';
+    return i;
+}

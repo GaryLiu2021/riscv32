@@ -24,6 +24,8 @@ module core_top (
 	output				core_lsu_resp_rdy
 );
 
+	wire			reg_rs_ready;
+
 	/*
 	 * Instruction Fetch Unit
 	 */
@@ -320,8 +322,6 @@ module core_top (
 	wire	[4:0]	scb_ret_reg_idx;
 	wire			scb_ret_reg_valid;
 
-	wire			reg_rs_ready;
-
 	core_ctrl_scb  u_core_ctrl_scb (
 		.clk                     ( clk                  ),
 		.rstn                    ( rstn                 ),
@@ -566,7 +566,7 @@ module core_top (
             call_return();
         if(idu_tx_op_type == `op_type_ecall) // ecall
             call_return();
-        if(idu_tx_op_type == `op_type_jalr) // return
+        if(idu_tx_op_type == `op_type_jalr && idu_tx_rs1 == 'd0) // return
             call_return();
     end
 `endif	// __VERILATOR__

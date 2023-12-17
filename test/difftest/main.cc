@@ -34,6 +34,7 @@ word_t* dut_gpr;
 word_t* dut_pc;
 word_t* dut_inst;
 word_t* dut_mem;
+word_t* dut_ram;
 
 CPU_state dut_state;
 CPU_state ref_state;
@@ -103,6 +104,10 @@ extern "C" {
 
     void set_ptr_mem(const svOpenArrayHandle r) {
         dut_mem = (word_t*)(((VerilatedDpiOpenVar*)r)->datap());
+    }
+
+    void set_ptr_ram(const svOpenArrayHandle r) {
+        dut_ram = (word_t*)(((VerilatedDpiOpenVar*)r)->datap());
     }
 
     void call_return() {
@@ -281,9 +286,11 @@ int main(int argc, char** argv, char** env) {
             value |= static_cast<word_t>(pmem[i + j]) << (j * 8);
         }
         assert(dut_mem);
+        assert(dut_ram);
 
         //! Due to restriction, hardware memory[0] refer to pmem[0x80000000] here
         *(dut_mem + (i + RESET_VECTOR - CONFIG_MBASE) / 4) = value;
+        *(dut_ram + (i + RESET_VECTOR - CONFIG_MBASE) / 4) = value;
         // printf("0x%08x <= %08x\n", (i + RESET_VECTOR), *(dut_mem + (i + RESET_VECTOR - CONFIG_MBASE) / 4));
     }
 
@@ -299,7 +306,7 @@ int main(int argc, char** argv, char** env) {
     dut_state_dump();
     // init_difftest(lib_file, img_size, 1234);
 
-    while (!finish && cycles < 10000) {
+    while (!finish && cycles < 12000) {
         printf("\nCYCLE %ld\n", cycles);
         // print_dut_pc();
         // print_dut_inst();
